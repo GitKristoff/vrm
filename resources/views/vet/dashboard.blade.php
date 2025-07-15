@@ -7,6 +7,38 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Admin Stats (if applicable) -->
+            @if($isAdmin ?? false)
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-medium mb-2">Total Users</h3>
+                        <p class="text-3xl font-bold">{{ $adminStats['totalUsers'] }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-medium mb-2">Total Veterinarians</h3>
+                        <p class="text-3xl font-bold">{{ $adminStats['totalVets'] }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-medium mb-2">Total Appointments</h3>
+                        <p class="text-3xl font-bold">{{ $adminStats['totalAppointments'] }}</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <h3 class="text-lg font-medium mb-4">Admin Actions</h3>
+                    <div class="flex space-x-4">
+                        <a href="{{ route('admin.veterinarians.create') }}"
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Add Veterinarian
+                        </a>
+                        <a href="{{ route('admin.users.index') }}"
+                        class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                            Manage Users
+                        </a>
+                    </div>
+                </div>
+            @endif
+
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-200">
@@ -52,6 +84,8 @@
                 </div>
             </div>
 
+            <!-- Upcoming Appointments Table -->
+            @if(!($isAdmin ?? false))
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
                     <div class="flex justify-between items-center mb-6">
@@ -66,10 +100,12 @@
                         // Filter appointments for the table:
                         // - Only scheduled appointments
                         // - Starting from today
-                        $upcomingAppointments = $appointments->filter(function($appointment) {
-                            return $appointment->status === 'Scheduled' &&
-                                $appointment->appointment_date >= now()->startOfDay();
-                        })->sortBy('appointment_date');
+                        $upcomingAppointments = $appointments
+                            ? $appointments->filter(function($appointment) {
+                                return $appointment->status === 'Scheduled' &&
+                                    $appointment->appointment_date >= now()->startOfDay();
+                            })->sortBy('appointment_date')
+                            : collect();
                     @endphp
 
                     @if($upcomingAppointments->count())
@@ -86,7 +122,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($upcomingAppointments->sortBy('appointment_date') as $appointment)
+                                    @foreach($upcomingAppointments as $appointment)
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
@@ -147,6 +183,7 @@
                     @endif
                 </div>
             </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

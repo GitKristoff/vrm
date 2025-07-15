@@ -1,5 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Auth;
+use App\Models\Veterinarian;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OwnerController;
 use App\Http\Controllers\VetController;
@@ -19,8 +20,15 @@ Route::get('/dashboard', function () {
     if (!auth()->check()) {
         return redirect()->route('login');
     }
-
     $user = auth()->user();
+
+    // Handle veterinarian admins
+    if ($user->role === 'veterinarian') {
+        $vet = Veterinarian::where('user_id', $user->id)->first();
+        if ($vet && $vet->is_admin) {
+            return redirect()->route('admin.dashboard');
+        }
+    }
 
     return match($user->role) {
         'admin' => redirect()->route('admin.dashboard'),
@@ -29,22 +37,37 @@ Route::get('/dashboard', function () {
     };
 })->middleware(['auth'])->name('dashboard');
 
+
 // Admin Routes:
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'admin.access'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/users', [AdminController::class, 'users'])->name('users.index');
+    Route::get('/users/{user}', [AdminController::class, 'show'])
+    ->name('admin.users.show');
+    Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('admin.users.destroy');
+    Route::get('/users', [AdminController::class, 'users'])->name('admin.users.index');
 
     // Veterinarian Management
-     Route::get('/veterinarians', [VeterinarianController::class, 'index'])
+    Route::get('/veterinarians', [VeterinarianController::class, 'index'])
         ->name('admin.veterinarians.index');
 
     Route::get('/veterinarians/create', [VeterinarianController::class, 'create'])
         ->name('admin.veterinarians.create');
 
+    Route::get('/veterinarians/{veterinarian}/edit', [VeterinarianController::class, 'edit'])
+    ->name('admin.veterinarians.edit');
+
+    Route::put('/veterinarians/{veterinarian}', [VeterinarianController::class, 'update'])
+        ->name('admin.veterinarians.update');
+
+    Route::get('/veterinarians/{veterinarian}', [VeterinarianController::class, 'show'])
+        ->name('admin.veterinarians.show');
+
+    Route::delete('/veterinarians/{veterinarian}', [VeterinarianController::class, 'destroy'])
+        ->name('admin.veterinarians.destroy');
+
     Route::post('/veterinarians', [VeterinarianController::class, 'store'])
         ->name('admin.veterinarians.store');
-
-    // Route for system users
-    Route::get('/users', [AdminController::class, 'users'])->name('admin.users.index');
 });
 
 // Owner routes:

@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pet;
+use App\Models\MedicalRecord;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log; // Added for debugging
+use Illuminate\Support\Facades\Log;
 
 class PetController extends Controller
 {
@@ -200,31 +201,16 @@ class PetController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // DEBUG: Log image before deletion
-        // if ($pet->profile_image) {
-        //     Log::debug('Deleting pet image', [
-        //         'path' => $pet->profile_image,
-        //         'exists' => Storage::disk('public')->exists($pet->profile_image) ? 'YES' : 'NO'
-        //     ]);
-        // }
-
-        // Cancel appointments
-        $pet->appointments()
-            ->where('status', 'Scheduled')
-            ->update(['status' => 'Cancelled']);
-
         // Delete image if exists
         if ($pet->profile_image) {
-            $deleted = Storage::disk('public')->delete($pet->profile_image);
-            Log::info('Image deleted', [
-                'path' => $pet->profile_image,
-                'success' => $deleted ? 'YES' : 'NO'
-            ]);
+            Storage::disk('public')->delete($pet->profile_image);
         }
 
+        // Database cascades will handle appointments, medical records, and medications
         $pet->delete();
+
         return redirect()->route('owner.pets.index')
-            ->with('success', 'Pet and associated appointments have been removed!');
+            ->with('success', 'Pet and all associated records have been removed!');
     }
 
 }

@@ -142,8 +142,8 @@
                 </div>
 
                 <!-- Feature 4 -->
-                <div class="bg-amber-50 rounded-xl p-6 hover:shadow-lg transition-shadow">
-                    <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                <div class="bg-yellow-100 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                    <div class="w-16 h-16 bg-yellow-200 rounded-full flex items-center justify-center">
                         <i class="fas fa-comments text-amber-600 text-2xl"></i>
                     </div>
                     <h3 class="mt-6 text-xl font-semibold text-gray-900">Live Communication</h3>
@@ -198,11 +198,11 @@
                     </div>
                 </div>
 
-                <div class="hidden md:block w-2/12 flex justify-center my-12">
+                {{-- <div class="hidden md:block w-2/12 flex justify-center my-12">
                     <div class="h-full flex items-center">
-                        <div class="h-64 w-1 bg-blue-200 rounded"></div>
+                        <div class="h-64 w-1 bg-blue-200 full-rounded"></div>
                     </div>
-                </div>
+                </div> --}}
 
                 <div class="w-full md:w-5/12 mt-12 md:mt-0">
                     <div class="relative">

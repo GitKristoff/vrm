@@ -5,6 +5,15 @@
 $user = Auth::user();
 $role = $user->role ?? 'guest';
 
+use App\Models\Veterinarian;
+
+// Check if user is veterinarian admin
+$isVetAdmin = false;
+if ($role === 'veterinarian') {
+    $vet = $user->veterinarian ?? Veterinarian::where('user_id', $user->id)->first();
+    $isVetAdmin = $vet && $vet->is_admin;
+}
+
 $navigation = [
     [
         'name' => 'Dashboard',
@@ -27,15 +36,15 @@ $navigation = [
     ],
     // Admin-specific items
     [
-        'name' => 'System Users',
+        'name' => 'User Management',
         'href' => route('admin.users.index'),
         'icon' => 'heroicon-o-user-group',
         'active' => request()->routeIs('admin.users.*'),
         'roles' => ['admin']
     ],
     [
-        'name' => 'Add Veterinarian',
-        'href' => route('admin.veterinarians.create'),
+        'name' => 'Veterinarians',
+        'href' => route('admin.veterinarians.index'),
         'icon' => 'heroicon-o-user-add',
         'active' => request()->routeIs('admin.veterinarians.*'),
         'roles' => ['admin']
@@ -49,14 +58,16 @@ $navigation = [
         'icon' => 'heroicon-o-document-text',
         'active' => request()->routeIs('vet.medrecords.*') ||
                     request()->routeIs('medical-records.*'),
-        'roles' => ['veterinarian', 'owner', 'admin']
+        'roles' => ['veterinarian', 'owner', 'admin'],
+        'vetAdmin' => true
     ],
     [
         'name' => 'Clinic Settings',
         'href' => route('vet.settings'),
         'icon' => 'heroicon-o-cog',
         'active' => request()->routeIs('vet.settings'),
-        'roles' => ['veterinarian']
+        'roles' => ['veterinarian'],
+        'vetAdmin' => true
     ],
     // Owner-specific items
     [
@@ -69,8 +80,15 @@ $navigation = [
 ];
 
 // Filter navigation items based on user role
-$filteredNavigation = array_filter($navigation, function($item) use ($role) {
-    return in_array($role, $item['roles']);
+// $filteredNavigation = array_filter($navigation, function($item) use ($role) {
+//     return in_array($role, $item['roles']);
+// });
+
+// Filter navigation based on role AND vet admin status
+$filteredNavigation = array_filter($navigation, function($item) use ($role, $isVetAdmin) {
+    $allowedByRole = in_array($role, $item['roles']);
+    $allowedByVetAdmin = ($isVetAdmin && ($item['vetAdmin'] ?? false));
+    return $allowedByRole || $allowedByVetAdmin;
 });
 @endphp
 

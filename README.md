@@ -6,7 +6,7 @@
 
 > Advanced veterinary management system with AI-assisted diagnostics developed for Bulan Veterinary Clinic
 
-![VetAI Assistant Screenshot](https://via.placeholder.com/800x500?text=VetAI+Assistant+Screenshot)
+<!-- ![VetAI Assistant Screenshot](https://via.placeholder.com/800x500?text=VetAI+Assistant+Screenshot) -->
 
 ## Features
 
@@ -22,7 +22,7 @@
 
 ### 📅 Smart Scheduling
 - Automated appointment management
-- SMS/email reminders for pet owners
+- Email reminders for pet owners
 - Follow-up notification system
 
 ### 💬 Live Communication
@@ -69,8 +69,8 @@ Developed as part of the research paper **"Veterinary Records Management with AI
 
 ### Setup Steps:
 ```bash
-1. git clone https://github.com/your-username/vetai-assistant.git
-2. cd vetai-assistant
+1. git clone https://github.com/GitKristoff/vrm.git
+2. cd vrm
 3. composer install
 4. npm install && npm run dev
 5. cp .env.example .env

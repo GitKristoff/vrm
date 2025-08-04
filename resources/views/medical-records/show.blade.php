@@ -129,6 +129,25 @@
                             </div>
                         @endif
                     </div>
+
+                    {{-- Appointment Type Records --}}
+                    <div class="mb-4 p-4 bg-gray-50 rounded border">
+                        <h4 class="font-semibold mb-2">Appointment Type Records</h4>
+                        <ul>
+                            @foreach(['vaccination' => 'Vaccination', 'dental' => 'Dental Care', 'checkup' => 'Check-up', 'surgery' => 'Surgery', 'other' => 'Other'] as $key => $label)
+                                <li>
+                                    <strong>{{ $label }}:</strong>
+                                    {{ $typeCounts[$key] > 0 ? $typeCounts[$key] . ' record(s)' : 'None recorded' }}
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    {{-- End Appointment Type Records --}}
+
+                    <a href="{{ route('medical-records.download', $pet->id) }}"
+                       class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                        Download PDF
+                    </a>
                 </div>
             </div>
         </div>

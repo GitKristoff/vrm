@@ -97,9 +97,15 @@
                                     <td class="px-4 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
                                             <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                                <span class="text-gray-600 font-medium">
-                                                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                                                </span>
+                                                    @if($user->profile_picture)
+                                                        <img src="{{ asset('storage/' . $user->profile_picture) }}"
+                                                            alt="Profile Picture"
+                                                            class="h-10 w-10 object-cover rounded-full" />
+                                                    @else
+                                                        <span class="text-gray-600 font-medium">
+                                                            {{ strtoupper(substr($user->name, 0, 1)) }}
+                                                        </span>
+                                                    @endif
                                             </div>
                                             <div class="ml-4">
                                                 <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>

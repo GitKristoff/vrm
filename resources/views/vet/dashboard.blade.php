@@ -102,8 +102,7 @@
                         // - Starting from today
                         $upcomingAppointments = $appointments
                             ? $appointments->filter(function($appointment) {
-                                return $appointment->status === 'Scheduled' &&
-                                    $appointment->appointment_date >= now()->startOfDay();
+                                return $appointment->status === 'Scheduled';
                             })->sortBy('appointment_date')
                             : collect();
                     @endphp
@@ -154,10 +153,35 @@
                                                     class="text-indigo-600 hover:text-indigo-900">View</a>
 
                                                 @if($appointment->status === 'Scheduled')
-                                                    <a href="{{ route('appointments.checkin.create', $appointment) }}"
+                                                    @php
+                                                        $isOverdue = $appointment->appointment_date < now();
+                                                    @endphp
+
+                                                    @if($isOverdue)
+                                                        <a href="{{ route('appointments.checkin.create', $appointment) }}"
+                                                        class="text-green-600 hover:text-green-900 ml-3"
+                                                        onclick="event.preventDefault();
+                                                                    Swal.fire({
+                                                                        title: 'Appointment Overdue',
+                                                                        text: 'This appointment is overdue (scheduled for {{ $appointment->appointment_date->format('M d, Y h:i A') }}). Are you sure you want to check in?',
+                                                                        icon: 'warning',
+                                                                        showCancelButton: true,
+                                                                        confirmButtonColor: '#3085d6',
+                                                                        cancelButtonColor: '#d33',
+                                                                        confirmButtonText: 'Yes, check in'
+                                                                    }).then((result) => {
+                                                                        if (result.isConfirmed) {
+                                                                            window.location.href = '{{ route('appointments.checkin.create', $appointment) }}';
+                                                                        }
+                                                                    });">
+                                                            Check-in
+                                                        </a>
+                                                    @else
+                                                        <a href="{{ route('appointments.checkin.create', $appointment) }}"
                                                         class="text-green-600 hover:text-green-900 ml-3">
-                                                        Check-in
-                                                    </a>
+                                                            Check-in
+                                                        </a>
+                                                    @endif
                                                 @endif
                                             </td>
                                         </tr>
@@ -176,6 +200,123 @@
                                 <div class="ml-3">
                                     <p class="text-sm text-blue-700">
                                         No upcoming appointments scheduled. Enjoy your free time!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            <!-- All Scheduled Appointments Table (Admin View) -->
+            @if($isAdmin ?? false)
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
+                <div class="p-6 bg-white border-b border-gray-200">
+                    <h3 class="text-lg font-medium mb-4">All Scheduled Appointments</h3>
+
+                    @php
+                        // Show all scheduled appointments, including overdue
+                        $scheduledAppointmentsList = $appointments
+                            ? $appointments->filter(function($appointment) {
+                                return $appointment->status === 'Scheduled';
+                            })->sortBy('appointment_date')
+                            : collect();
+                    @endphp
+
+                    @if($scheduledAppointmentsList->count())
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pet</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($scheduledAppointmentsList as $appointment)
+                                    <tr class="hover:bg-gray-50 {{ $appointment->appointment_date < now() ? 'bg-red-50' : '' }}">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="ml-4">
+                                                    <div class="text-sm font-medium text-gray-900">{{ $appointment->pet->name ?? 'Unknown Pet' }}</div>
+                                                    <div class="text-sm text-gray-500">{{ $appointment->pet->species ?? 'N/A' }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900">{{ $appointment->appointment_date->format('M d, Y') }}</div>
+                                            <div class="text-sm text-gray-500">{{ $appointment->appointment_date->format('h:i A') }}</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {{ $appointment->pet->owner->user->name ?? 'Unknown Owner' }}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500">
+                                            {{ Str::limit($appointment->reason, 30) }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                                {{ $appointment->status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                                   ($appointment->status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
+                                            {{ ucfirst($appointment->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <a href="{{ route('appointments.show', $appointment) }}"
+                                                class="text-indigo-600 hover:text-indigo-900">View</a>
+
+                                            @if($appointment->status === 'Scheduled')
+                                                @php
+                                                    $isOverdue = $appointment->appointment_date < now();
+                                                @endphp
+
+                                                @if($isOverdue)
+                                                    <a href="{{ route('appointments.checkin.create', $appointment) }}"
+                                                    class="text-green-600 hover:text-green-900 ml-3"
+                                                    onclick="event.preventDefault();
+                                                                Swal.fire({
+                                                                    title: 'Appointment Overdue',
+                                                                    text: 'This appointment is overdue (scheduled for {{ $appointment->appointment_date->format('M d, Y h:i A') }}). Are you sure you want to check in?',
+                                                                    icon: 'warning',
+                                                                    showCancelButton: true,
+                                                                    confirmButtonColor: '#3085d6',
+                                                                    cancelButtonColor: '#d33',
+                                                                    confirmButtonText: 'Yes, check in'
+                                                                }).then((result) => {
+                                                                    if (result.isConfirmed) {
+                                                                        window.location.href = '{{ route('appointments.checkin.create', $appointment) }}';
+                                                                    }
+                                                                });">
+                                                        Check-in
+                                                    </a>
+                                                @else
+                                                    <a href="{{ route('appointments.checkin.create', $appointment) }}"
+                                                    class="text-green-600 hover:text-green-900 ml-3">
+                                                        Check-in
+                                                    </a>
+                                                @endif
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-blue-700">
+                                        No scheduled appointments found.
                                     </p>
                                 </div>
                             </div>

@@ -6,7 +6,7 @@ document.addEventListener('alpine:init', () => {
     // Create global sidebar state
     Alpine.store('sidebar', {
         expanded: window.innerWidth >= 1024,
-        
+
         toggle() {
             this.expanded = !this.expanded;
         }

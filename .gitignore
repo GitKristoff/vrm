@@ -22,3 +22,25 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebooks (if used)
+.ipynb_checkpoints
+
+# Virtual Environment folders
+venv/
+env/
+tf_env/
+ENV/
+.venv/
+
+# VS Code settings (optional, but useful)
+.vscode/

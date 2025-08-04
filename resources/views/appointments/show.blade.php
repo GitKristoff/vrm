@@ -56,6 +56,12 @@
                                         </span>
                                     </dd>
                                 </div>
+                                <div class="flex items-start">
+                                    <dt class="w-32 flex-shrink-0 text-sm font-medium text-gray-500">Type</dt>
+                                    <dd class="text-sm text-gray-900">
+                                        {{ ucfirst($appointment->type) }}
+                                    </dd>
+                                </div>
                             </dl>
                         </div>
                     </div>
@@ -74,15 +80,54 @@
 
                     <div class="mt-8 flex space-x-4">
                         @if($appointment->status === 'Scheduled')
-                            <form action="{{ route('appointments.destroy', $appointment) }}" method="POST">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit"
-                                    class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                    onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
-                                    Cancel Appointment
-                                </button>
-                            </form>
+                            @if(auth()->user()->role === 'veterinarian' || auth()->user()->role === 'admin')
+                                @php
+                                    $isOverdue = $appointment->appointment_date < now();
+                                @endphp
+                                <a href="{{ route('appointments.checkin.create', $appointment) }}"
+                                    class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                    @if($isOverdue)
+                                        onclick="event.preventDefault();
+                                            Swal.fire({
+                                                title: 'Appointment Overdue',
+                                                text: 'This appointment is overdue (scheduled for {{ $appointment->appointment_date->format('M d, Y h:i A') }}). Are you sure you want to check in?',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#3085d6',
+                                                cancelButtonColor: '#d33',
+                                                confirmButtonText: 'Yes, check in'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    window.location.href = '{{ route('appointments.checkin.create', $appointment) }}';
+                                            }
+                                        });"
+                                    @endif
+                                >
+                                    Check-in
+                                </a>
+                            @endif
+
+                            @if(auth()->user()->role === 'veterinarian' && $appointment->veterinarian_id === auth()->user()->veterinarian->id)
+                                <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                        class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                        onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                        Cancel Appointment
+                                    </button>
+                                </form>
+                            @elseif(auth()->user()->role === 'owner')
+                                <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                        class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                        onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                        Cancel Appointment
+                                    </button>
+                                </form>
+                            @endif
                         @endif
                     </div>
                 </div>

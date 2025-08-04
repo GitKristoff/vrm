@@ -10,8 +10,14 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
                     <div class="flex items-center mb-8">
-                        <div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-gray-600">
-                            {{ strtoupper(substr($user->name, 0, 1)) }}
+                        <div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-gray-600 overflow-hidden border-4 border-white shadow">
+                            @if($user->profile_picture)
+                                <img src="{{ asset('storage/' . $user->profile_picture) }}"
+                                     alt="Profile Picture"
+                                     class="w-24 h-24 object-cover rounded-full" />
+                            @else
+                                {{ strtoupper(substr($user->name, 0, 1)) }}
+                            @endif
                         </div>
                         <div class="ml-6">
                             <h1 class="text-2xl font-bold">{{ $user->name }}</h1>

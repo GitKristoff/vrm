@@ -15,6 +15,14 @@ class Veterinarian extends Model
         'specialization',
         'phone',
         'is_admin',
+        'working_days',
+        'start_time',
+        'end_time',
+        'status',
+    ];
+
+    protected $casts = [
+        'working_days' => 'array',
     ];
 
     // Add relationship to User

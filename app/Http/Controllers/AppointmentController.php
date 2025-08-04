@@ -5,10 +5,17 @@ use App\Models\Appointment;
 use App\Models\Pet;
 use App\Models\MedicalRecord;
 use App\Models\Veterinarian;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Carbon\Carbon;
+use App\Notifications\AppointmentReminder;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\NewAppointmentNotification;
+use App\Services\MedicalRecordService;
+use Illuminate\Support\Facades\Log;
+
 
 class AppointmentController extends Controller
 {
@@ -59,10 +66,41 @@ class AppointmentController extends Controller
             'veterinarian_id' => 'required|exists:veterinarians,id',
             'appointment_date' => 'required|date',
             'reason' => 'required|string|max:255',
-            'duration_minutes' => 'required|integer|min:15'
+            'duration_minutes' => 'required|integer|min:15',
+            'type' => 'required|string|max:50',
         ]);
 
-        Appointment::create($request->all());
+        // Convert to Carbon instance
+        $startTime = Carbon::parse($request->appointment_date);
+        $endTime = $startTime->copy()->addMinutes((int)$request->duration_minutes);
+
+        // Check vet availability
+        $conflictingAppointments = Appointment::where('veterinarian_id', $request->veterinarian_id)
+            ->where('status', 'Scheduled')
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->where(function ($q) use ($startTime, $endTime) {
+                    $q->where('appointment_date', '<', $endTime)
+                    ->whereRaw("DATE_ADD(appointment_date, INTERVAL duration_minutes MINUTE) > ?", [$startTime]);
+                });
+            })
+            ->exists();
+
+        if ($conflictingAppointments) {
+            return back()->withInput()
+                ->withErrors(['appointment_date' => 'The veterinarian is not available at this time. Please choose another time slot.']);
+        }
+
+        Log::info($request->all());
+
+        $appointment = Appointment::create($request->all());
+
+        // Send notifications
+        $vet = Veterinarian::with('user')->find($request->veterinarian_id);
+        $vet->user->notify(new NewAppointmentNotification($appointment));
+
+        // Also notify admin
+        $admins = User::where('role', 'admin')->get();
+        Notification::send($admins, new NewAppointmentNotification($appointment));
 
         return redirect()->route('appointments.index')
             ->with('success', 'Appointment created successfully!');
@@ -85,28 +123,16 @@ class AppointmentController extends Controller
             abort(403);
         }
 
-        return view('appointments.show', compact('appointment'));
+        $medicalHistory = MedicalRecord::where('pet_id', $appointment->pet_id)
+        ->orderBy('record_date', 'desc')
+        ->limit(5)
+        ->get();
+
+        return view('appointments.show', compact('appointment', 'medicalHistory'));
     }
-
-    // public function edit(Appointment $appointment)
-    // {
-    //     $pets = Pet::all();
-    //     $vets = Veterinarian::with('user')->get();
-
-    //     return view('appointments.edit', compact('appointment', 'pets', 'vets'));
-    // }
 
     public function update(Request $request, Appointment $appointment)
     {
-        // $request->validate([
-        //     'status' => 'required|in:Scheduled,Completed,Cancelled,No-show',
-        //     'notes' => 'nullable|string'
-        // ]);
-
-        // $appointment->update($request->only('status', 'notes'));
-
-        // return redirect()->route('appointments.index')
-        //     ->with('success', 'Appointment updated successfully!');
 
         $request->validate([
         'status' => 'required|in:Scheduled,Completed,Cancelled,No-show',
@@ -147,22 +173,6 @@ class AppointmentController extends Controller
         return back()->with('error', 'Only scheduled appointments can be cancelled');
     }
 
-    // public function checkin(Appointment $appointment)
-    // {
-    //     // Authorization
-    //     if (Auth::user()->role !== 'veterinarian' ||
-    //         $appointment->veterinarian_id !== Auth::user()->veterinarian->id) {
-    //         abort(403);
-    //     }
-
-    //     // Only allow check-in for scheduled appointments
-    //     if ($appointment->status === 'Scheduled') {
-    //         $appointment->update(['status' => 'Completed']);
-    //         return back()->with('success', 'Appointment marked as completed!');
-    //     }
-
-    //     return back()->with('error', 'Only scheduled appointments can be checked in');
-    // }
 
     public function checkinForm(Appointment $appointment)
     {
@@ -185,30 +195,10 @@ class AppointmentController extends Controller
             abort(403);
         }
 
-        $request->validate([
-            'subjective_notes' => 'required|string',
-            'objective_notes' => 'required|string',
-            'assessment' => 'required|string',
-            'plan' => 'required|string',
-            'temperature' => 'nullable|numeric',
-            'heart_rate' => 'nullable|numeric',
-            'respiratory_rate' => 'nullable|numeric',
-            'weight' => 'nullable|numeric',
-            'vaccination_history' => 'nullable|string',
-            'medications' => 'nullable|array',
-            'medications.*.name' => 'required|string',
-            'medications.*.dosage' => 'required|string',
-            'medications.*.frequency' => 'required|string',
-            'medications.*.start_date' => 'required|date',
-            'medications.*.end_date' => 'required|date',
-            'medications.*.purpose' => 'required|string',
-        ]);
+        $service = new MedicalRecordService();
 
-        // Create medical record
-        $medicalRecord = MedicalRecord::create([
-            'pet_id' => $appointment->pet_id,
+        $record = $service->createRecord([
             'veterinarian_id' => $appointment->veterinarian_id,
-            'appointment_id' => $appointment->id,
             'record_date' => now(),
             'subjective_notes' => $request->subjective_notes,
             'objective_notes' => $request->objective_notes,
@@ -219,26 +209,55 @@ class AppointmentController extends Controller
             'respiratory_rate' => $request->respiratory_rate,
             'weight' => $request->weight,
             'vaccination_history' => $request->vaccination_history,
-        ]);
+            'medications' => $request->medications ?? []
+        ], $appointment->pet_id, $appointment->id);
 
-        // Create medications
-        if ($request->filled('medications')) {
-            foreach ($request->medications as $medication) {
-                $medicalRecord->medications()->create([
-                    'name' => $medication['name'],
-                    'dosage' => $medication['dosage'],
-                    'frequency' => $medication['frequency'],
-                    'start_date' => $medication['start_date'],
-                    'end_date' => $medication['end_date'],
-                    'purpose' => $medication['purpose'],
-                ]);
-            }
-        }
-
-        // Update appointment status
         $appointment->update(['status' => 'Completed']);
 
         return redirect()->route('appointments.show', $appointment)
             ->with('success', 'Appointment completed and medical record created!');
+    }
+
+    public function calendar()
+    {
+        $user = Auth::user();
+        $appointments = Appointment::with(['pet', 'veterinarian.user']);
+
+        // Filter appointments based on user role
+        if ($user->role === 'veterinarian') {
+            $appointments->where('veterinarian_id', $user->veterinarian->id);
+        } elseif ($user->role === 'owner') {
+            $petIds = $user->owner->pets->pluck('id');
+            $appointments->whereIn('pet_id', $petIds);
+        }
+
+        $appointments = $appointments->get();
+
+        // Prepare events for FullCalendar
+        $events = $appointments->map(function ($appointment) {
+            return [
+                'title' => $appointment->pet->name . ' with ' . $appointment->veterinarian->user->name,
+                'start' => $appointment->appointment_date->format('Y-m-d\TH:i:s'),
+                'end' => $appointment->appointment_date->copy()->addMinutes($appointment->duration_minutes)->format('Y-m-d\TH:i:s'),
+                'url' => route('appointments.show', $appointment->id),
+                'color' => '#4f46e5', // Indigo
+            ];
+        });
+
+        return view('appointments.calendar', ['events' => $events]);
+    }
+
+    public function sendReminders()
+    {
+        $appointments = Appointment::where('status', 'Scheduled')
+            ->whereBetween('appointment_date', [now(), now()->addDay()])
+            ->get();
+
+        foreach ($appointments as $appointment) {
+            $user = $appointment->pet->owner->user;
+            $user->notify(new AppointmentReminder($appointment));
+        }
+
+        return response()->json(['sent' => count($appointments)]);
     }
 }

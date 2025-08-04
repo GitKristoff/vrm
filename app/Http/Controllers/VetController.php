@@ -115,12 +115,41 @@ class VetController extends Controller
     public function settings(): View
     {
         $user = Auth::user();
-        $isAdmin = false;
+        $vet = $user->veterinarian; // <-- Add this line
+        return view('vet.settings', compact('vet'));
+    }
 
-        if ($user->role === 'veterinarian') {
-            $isAdmin = $user->veterinarian->is_admin;
+    public function updateSettings(Request $request)
+    {
+        // Normalize time inputs to H:i before validation
+        if ($request->start_time) {
+            $request->merge([
+                'start_time' => \Carbon\Carbon::parse($request->start_time)->format('H:i')
+            ]);
+        }
+        if ($request->end_time) {
+            $request->merge([
+                'end_time' => \Carbon\Carbon::parse($request->end_time)->format('H:i')
+            ]);
         }
 
-        return view('vet.settings.index', compact('isAdmin'));
+        $request->validate([
+            'working_days' => 'array',
+            'start_time' => 'nullable|date_format:H:i',
+            'end_time' => 'nullable|date_format:H:i|after:start_time',
+            'status' => 'required|in:in,out,on leave',
+        ]);
+
+        $vet = Auth::user()->veterinarian()->first();
+
+        if ($vet) {
+            $vet->working_days = $request->working_days;
+            $vet->start_time = $request->start_time;
+            $vet->end_time = $request->end_time;
+            $vet->status = $request->status;
+            $vet->save();
+        }
+
+        return redirect()->route('vet.settings')->with('success', 'Settings updated!');
     }
 }

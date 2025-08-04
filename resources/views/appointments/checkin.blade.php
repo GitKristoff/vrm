@@ -25,6 +25,18 @@
                                     placeholder="Owner's concerns, pet's behavior, symptoms, etc.">{{ old('subjective_notes') }}</textarea>
                             </div>
 
+                            <div class="mt-4 mb-4">
+                                <button type="button" id="ai-suggestion-btn" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <i class="fas fa-robot mr-2"></i>Get AI Suggestion
+                                </button>
+                                <div id="ai-results" class="mt-3 p-3 bg-blue-50 rounded-lg" style="display:none;">
+                                    <h5 class="font-medium text-blue-800">AI Diagnosis Suggestion</h5>
+                                    <p><strong>Condition:</strong> <span id="ai-diagnosis"></span></p>
+                                    <p><strong>Confidence:</strong> <span id="ai-confidence"></span></p>
+                                    <p><strong>Notes:</strong> <span id="ai-notes"></span></p>
+                                </div>
+                            </div>
+
                             <div>
                                 <x-input-label for="objective_notes" :value="__('Objective Findings')" />
                                 <textarea id="objective_notes" name="objective_notes" rows="4" required
@@ -188,6 +200,52 @@
                 newForm.querySelector('.remove-medication').addEventListener('click', function() {
                     container.removeChild(newForm);
                 });
+            });
+        });
+
+        document.getElementById('ai-suggestion-btn').addEventListener('click', function() {
+            const symptoms = document.getElementById('subjective_notes').value;
+            const petId = {{ $appointment->pet_id }};
+
+            // Show loading indicator
+            const aiResults = document.getElementById('ai-results');
+            aiResults.style.display = 'block';
+            aiResults.innerHTML = '<p>Loading AI suggestion...</p>';
+
+            fetch("{{ route('ai.predict') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    symptoms: symptoms,
+                    pet_id: petId
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('ai-diagnosis').textContent = data.diagnosis || data.possible_conditions?.[0] || 'Unknown';
+                document.getElementById('ai-confidence').textContent =
+                    Math.round((data.confidence || data.confidence_score || 0) * 100) + '%';
+                document.getElementById('ai-notes').textContent = data.additional_notes;
+                aiResults.style.display = 'block';
+
+                // Auto-fill assessment field with AI suggestion
+                document.getElementById('assessment').value =
+                    `AI Suggestion: ${data.diagnosis}\n${data.additional_notes}`;
+            })
+            .catch(error => {
+                console.error('AI Error:', error);
+                aiResults.innerHTML = `
+                    <p class="text-red-600">Error: ${error.message}</p>
+                    <p class="text-sm">Please try again or contact support</p>
+                `;
             });
         });
     </script>

@@ -11,9 +11,14 @@
                 <div class="p-6 bg-white border-b border-gray-200">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-medium">Manage Appointments</h3>
-                        <a href="{{ route('appointments.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
-                            Create New Appointment
-                        </a>
+                        <div>
+                            <a href="{{ route('appointments.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                                Create New Appointment
+                            </a>
+                            <a href="{{ route('appointments.calendar') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150 ml-2">
+                                View Calendar
+                            </a>
+                        </div>
                     </div>
 
                     @if(session('success'))
@@ -75,14 +80,25 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <a href="{{ route('appointments.show', $appointment) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">View</a>
                                             @if($appointment->status === 'Scheduled')
-                                                <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900"
-                                                        onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
-                                                        Cancel
-                                                    </button>
-                                                </form>
+                                                @if(auth()->user()->role === 'veterinarian' && $appointment->veterinarian_id === auth()->user()->veterinarian->id)
+                                                    <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-900"
+                                                            onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                                            Cancel
+                                                        </button>
+                                                    </form>
+                                                @elseif(auth()->user()->role === 'owner')
+                                                    <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-900"
+                                                            onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                                            Cancel
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         </td>
                                     </tr>

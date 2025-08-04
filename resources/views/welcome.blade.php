@@ -9,26 +9,39 @@
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-cyan-50">
     <!-- Navigation -->
-    <nav class="bg-white shadow-lg">
+    <nav class="bg-white shadow-lg" x-data="{ open: false }">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-20">
+            <div class="flex justify-between h-20 items-center">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
                         <i class="fas fa-paw text-blue-600 text-3xl mr-2"></i>
                         <span class="text-xl font-bold text-gray-900">VetAI Assistant</span>
                     </div>
                 </div>
-                <div class="flex items-center">
-                    <div class="hidden md:flex space-x-8">
-                        <a href="#features" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">Features</a>
-                        <a href="#how-it-works" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">How It Works</a>
-                        <a href="#about" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">About</a>
-                    </div>
-                    <div class="ml-10 space-x-4">
-                        <a href="{{ route('login') }}" class="text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md text-md font-medium">Login</a>
-                        <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-md font-medium">Register</a>
-                    </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button @click="open = !open" class="text-gray-700 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
                 </div>
+                <!-- Desktop Links -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">Features</a>
+                    <a href="#how-it-works" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">How It Works</a>
+                    <a href="#about" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">About</a>
+                    <a href="{{ route('login') }}" class="text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md text-md font-medium">Login</a>
+                    <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-md font-medium">Register</a>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div x-show="open" class="md:hidden bg-white shadow-lg" x-transition>
+            <div class="px-4 pt-2 pb-4 space-y-2">
+                <a href="#features" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">Features</a>
+                <a href="#how-it-works" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">How It Works</a>
+                <a href="#about" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">About</a>
+                <a href="{{ route('login') }}" class="block text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md text-md font-medium">Login</a>
+                <a href="{{ route('register') }}" class="block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-md font-medium">Register</a>
             </div>
         </div>
     </nav>
@@ -45,10 +58,10 @@
                         Transforming veterinary care through intelligent record management and AI-assisted diagnostics for Bulan Veterinary Clinic and beyond.
                     </p>
                     <div class="mt-10 flex space-x-4">
-                        <a href="{{ route('register') }}" class="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 text-lg font-semibold">
+                        <a href="{{ route('register') }}" class="bg-blue-600 text-white px-6 py-3 md:px-8 md:py-4 rounded-lg hover:bg-blue-700 text-base md:text-lg font-semibold w-full md:w-auto text-center">
                             Get Started <i class="fas fa-arrow-right ml-2"></i>
                         </a>
-                        <a href="#features" class="border-2 border-blue-600 text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 text-lg font-semibold">
+                        <a href="#features" class="border-2 border-blue-600 text-blue-600 px-6 py-3 md:px-8 md:py-4 rounded-lg hover:bg-blue-50 text-base md:text-lg font-semibold w-full md:w-auto text-center mt-2 md:mt-0">
                             Learn More
                         </a>
                     </div>
@@ -60,7 +73,7 @@
                                 <img
                                     src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQo3AgcJtwVpAUZ6sSXtDKRTl70jiFKXczw4Q&s"
                                     alt="Golden Retriever"
-                                    class="rounded-full w-16 h-16 object-cover border-2 border-blue-200"
+                                    class="rounded-full w-16 h-16 object-cover border-2 border-blue-200 mx-auto md:mx-0"
                                 >
                                 <div class="ml-4">
                                     <h3 class="font-semibold">Max (Golden Retriever)</h3>
@@ -107,7 +120,7 @@
                 </p>
             </div>
 
-            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                 <!-- Feature 1 -->
                 <div class="bg-blue-50 rounded-xl p-6 hover:shadow-lg transition-shadow">
                     <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -345,49 +358,7 @@
     <footer class="bg-gray-900 text-white py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div>
-                    <div class="flex items-center">
-                        <i class="fas fa-paw text-blue-400 text-2xl mr-2"></i>
-                        <span class="text-xl font-bold">VetAI Assistant</span>
-                    </div>
-                    <p class="mt-4 text-gray-400">
-                        Advanced veterinary records management with AI-powered diagnosis assistance for modern clinics.
-                    </p>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-semibold">Quick Links</h3>
-                    <ul class="mt-4 space-y-2">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Home</a></li>
-                        <li><a href="#features" class="text-gray-400 hover:text-white">Features</a></li>
-                        <li><a href="#how-it-works" class="text-gray-400 hover:text-white">How It Works</a></li>
-                        <li><a href="#about" class="text-gray-400 hover:text-white">About</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-semibold">Resources</h3>
-                    <ul class="mt-4 space-y-2">
-                        <li><a href="#" class="text-gray-400 hover:text-white">Documentation</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Research Paper</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Support Center</a></li>
-                        <li><a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-semibold">Contact Us</h3>
-                    <ul class="mt-4 space-y-2">
-                        <li class="flex items-center">
-                            <i class="fas fa-map-marker-alt text-gray-400 mr-3"></i>
-                            <span class="text-gray-400">Sorsogon State University-Bulan Campus</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-envelope text-gray-400 mr-3"></i>
-                            <span class="text-gray-400">info@vetaissistant.com</span>
-                        </li>
-                    </ul>
-                </div>
+                <!-- Footer Columns -->
             </div>
 
             <div class="mt-12 pt-8 border-t border-gray-800 text-center text-gray-400">

@@ -61,6 +61,11 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
+
+        // Convert to Manila time first, then UTC
+        $appointmentDate = Carbon::parse($request->appointment_date, 'Asia/Manila')->format('Y-m-d H:i:s');
+
+        // Validate request
         $request->validate([
             'pet_id' => 'required|exists:pets,id',
             'veterinarian_id' => 'required|exists:veterinarians,id',
@@ -92,7 +97,15 @@ class AppointmentController extends Controller
 
         Log::info($request->all());
 
-        $appointment = Appointment::create($request->all());
+        $appointment = Appointment::create([
+            'pet_id' => $request->pet_id,
+            'veterinarian_id' => $request->veterinarian_id,
+            'appointment_date' => $appointmentDate,
+            'reason' => $request->reason,
+            'duration_minutes' => $request->duration_minutes,
+            'type' => $request->type,
+            'status' => 'Scheduled',
+        ]);
 
         // Send notifications
         $vet = Veterinarian::with('user')->find($request->veterinarian_id);
@@ -237,8 +250,14 @@ class AppointmentController extends Controller
         $events = $appointments->map(function ($appointment) {
             return [
                 'title' => $appointment->pet->name . ' with ' . $appointment->veterinarian->user->name,
-                'start' => $appointment->appointment_date->format('Y-m-d\TH:i:s'),
-                'end' => $appointment->appointment_date->copy()->addMinutes($appointment->duration_minutes)->format('Y-m-d\TH:i:s'),
+                'start' => $appointment->appointment_date
+                    ->setTimezone('Asia/Manila')
+                    ->format('Y-m-d\TH:i:s'),
+                'end' => $appointment->appointment_date
+                    ->copy()
+                    ->addMinutes($appointment->duration_minutes)
+                    ->setTimezone('Asia/Manila')
+                    ->format('Y-m-d\TH:i:s'),
                 'url' => route('appointments.show', $appointment->id),
                 'color' => '#4f46e5', // Indigo
             ];

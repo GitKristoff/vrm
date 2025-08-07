@@ -51,13 +51,13 @@
                         <!-- The rest of your form fields in a grid -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <!-- Appointment Date -->
-                            <div>
-                                <x-input-label for="appointment_date" :value="__('Date & Time')" />
-                                <input type="datetime-local" id="appointment_date" name="appointment_date"
-                                       class="block mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                       min="{{ now()->format('Y-m-d\TH:i') }}">
-                                <x-input-error :messages="$errors->get('appointment_date')" class="mt-2" />
-                            </div>
+                            <!-- Add timezone information to form -->
+                        <input type="hidden" name="timezone" value="Asia/Manila">
+
+                        <!-- Update datetime-local input -->
+                        <input type="datetime-local" id="appointment_date" name="appointment_date"
+                            class="block mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            min="{{ now()->setTimezone('Asia/Manila')->format('Y-m-d\TH:i') }}">
 
                             <!-- Duration -->
                             @if(auth()->user()->role !== 'owner')

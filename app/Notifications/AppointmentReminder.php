@@ -21,17 +21,33 @@ class AppointmentReminder extends Notification implements ShouldQueue
 
     public function via($notifiable)
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail($notifiable)
     {
+        // Convert to Manila time
+        $appointmentDate = $this->appointment->appointment_date
+            ->setTimezone('Asia/Manila')
+            ->format('M d, Y h:i A');
+
         return (new MailMessage)
             ->subject('Appointment Reminder: ' . $this->appointment->pet->name)
-            ->line('You have an upcoming appointment for ' . $this->appointment->pet->name)
-            ->line('Date: ' . $this->appointment->appointment_date->format('M d, Y h:i A'))
-            ->line('Veterinarian: ' . $this->appointment->veterinarian->user->name)
-            ->action('View Appointment', route('appointments.show', $this->appointment))
-            ->line('Thank you for using our veterinary service!');
+            ->view('emails.appointment-reminder', [
+                'appointment' => $this->appointment,
+                'appointmentDate' => $appointmentDate
+            ]);
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'appointment_id' => $this->appointment->id,
+            'pet_name' => $this->appointment->pet->name,
+            'date' => $this->appointment->appointment_date
+                ->setTimezone('Asia/Manila')
+                ->format('M d, Y h:i A'),
+            'message' => 'Appointment reminder for ' . $this->appointment->pet->name,
+        ];
     }
 }

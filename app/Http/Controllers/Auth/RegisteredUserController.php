@@ -31,13 +31,17 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        // Validation rules for owner registration
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'phone' => ['required', 'string', 'max:20'],
-            'address' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'regex:/^09\d{9}$/', 'max:11'],
+            'street' => ['required', 'string', 'max:255'],
+            'barangay' => ['required', 'string', 'max:255'],
+            'municipality' => ['required', 'string', 'max:255'],
+            'province' => ['required', 'string', 'max:255'],
+            'region' => ['required', 'string', 'max:255'],
+            'country' => ['required', 'string', 'max:255'],
         ]);
 
         // Create user (always as owner)
@@ -52,12 +56,17 @@ class RegisteredUserController extends Controller
         Owner::create([
             'user_id' => $user->id,
             'phone' => $request->phone,
-            'address' => $request->address
+            'street' => $request->street,
+            'barangay' => $request->barangay,
+            'municipality' => $request->municipality,
+            'province' => $request->province,
+            'region' => $request->region,
+            'country' => $request->country,
         ]);
 
         event(new Registered($user));
         Auth::login($user);
 
-        return redirect()->route('dashboard'); // Redirect to common dashboard
+        return redirect()->route('login'); // Redirect to login page
     }
 }

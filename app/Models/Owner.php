@@ -11,7 +11,12 @@ class Owner extends Model
     protected $fillable = [
         'user_id',
         'phone',
-        'address',
+        'street',
+        'barangay',
+        'municipality',
+        'province',
+        'region',
+        'country',
     ];
 
     // Add relationship to User

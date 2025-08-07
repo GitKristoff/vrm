@@ -26,21 +26,30 @@ class NewAppointmentNotification extends Notification implements ShouldQueue
 
     public function toMail($notifiable)
     {
+        // Convert to Manila time
+        $appointmentDate = $this->appointment->appointment_date
+            ->setTimezone('Asia/Manila')
+            ->format('M d, Y h:i A');
+
         return (new MailMessage)
-            ->subject('New Appointment Scheduled')
-            ->line('A new appointment has been booked:')
-            ->line('Pet: ' . $this->appointment->pet->name)
-            ->line('Date: ' . $this->appointment->appointment_date->format('M d, Y h:i A'))
-            ->line('Reason: ' . $this->appointment->reason)
-            ->action('View Appointment', route('appointments.show', $this->appointment));
+            ->subject('New Appointment Scheduled: ' . $this->appointment->pet->name)
+            ->view('emails.new-appointment', [
+                'appointment' => $this->appointment,
+                'appointmentDate' => $appointmentDate
+            ]);
     }
 
     public function toArray($notifiable)
     {
+        // Convert to Manila time
+        $appointmentDate = $this->appointment->appointment_date
+            ->setTimezone('Asia/Manila')
+            ->format('M d, Y h:i A');
+
         return [
             'appointment_id' => $this->appointment->id,
             'pet_name' => $this->appointment->pet->name,
-            'date' => $this->appointment->appointment_date->format('M d, Y h:i A'),
+            'date' => $appointmentDate, // Use converted time
             'message' => 'New appointment scheduled for ' . $this->appointment->pet->name,
         ];
     }

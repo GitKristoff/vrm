@@ -27,5 +27,10 @@ class AppServiceProvider extends ServiceProvider
         // Register Pet Policy
         Gate::policy(Pet::class, PetPolicy::class);
         Gate::policy(Conversation::class, ConversationPolicy::class);
+
+        // Set timezone if configured
+        if (config('app.timezone') === 'Asia/Manila') {
+            date_default_timezone_set('Asia/Manila');
+        }
     }
 }

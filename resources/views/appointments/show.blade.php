@@ -38,7 +38,8 @@
                                 <div class="flex items-start">
                                     <dt class="w-32 flex-shrink-0 text-sm font-medium text-gray-500">Date & Time</dt>
                                     <dd class="text-sm text-gray-900">
-                                        {{ $appointment->appointment_date->format('M d, Y h:i A') }}
+                                        {{ $appointment->appointment_date->setTimezone('Asia/Manila')->format('M d, Y h:i A') }}
+                                        <span class="text-xs text-gray-500">(Asia/Manila)</span>
                                     </dd>
                                 </div>
                                 <div class="flex items-start">

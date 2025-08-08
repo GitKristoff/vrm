@@ -6,6 +6,7 @@
     <title>Veterinary Records Management with AI-Powered Diagnosis</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-cyan-50">
     <!-- Navigation -->
@@ -26,22 +27,22 @@
                 </div>
                 <!-- Desktop Links -->
                 <div class="hidden md:flex items-center space-x-8">
-                    <a href="#features" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">Features</a>
-                    <a href="#how-it-works" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">How It Works</a>
-                    <a href="#about" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">About</a>
-                    <a href="{{ route('login') }}" class="text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md text-md font-medium">Login</a>
-                    <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-md font-medium">Register</a>
+                    <a href="#features" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">Features</a>
+                    <a href="#how-it-works" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">How It Works</a>
+                    <a href="#about" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">About</a>
+                    <a href="{{ route('login') }}" class="text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">Login</a>
+                    <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">Register</a>
                 </div>
             </div>
         </div>
         <!-- Mobile Menu -->
         <div x-show="open" class="md:hidden bg-white shadow-lg" x-transition>
             <div class="px-4 pt-2 pb-4 space-y-2">
-                <a href="#features" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">Features</a>
-                <a href="#how-it-works" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">How It Works</a>
-                <a href="#about" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium">About</a>
-                <a href="{{ route('login') }}" class="block text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md text-md font-medium">Login</a>
-                <a href="{{ route('register') }}" class="block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-md font-medium">Register</a>
+                <a href="#features" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">Features</a>
+                <a href="#how-it-works" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">How It Works</a>
+                <a href="#about" class="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">About</a>
+                <a href="{{ route('login') }}" class="block text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-md text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">Login</a>
+                <a href="{{ route('register') }}" class="block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-md font-medium hover:underline hover:decoration-2 hover:underline-offset-4 transition">Register</a>
             </div>
         </div>
     </nav>
@@ -61,7 +62,7 @@
                         <a href="{{ route('register') }}" class="bg-blue-600 text-white px-6 py-3 md:px-8 md:py-4 rounded-lg hover:bg-blue-700 text-base md:text-lg font-semibold w-full md:w-auto text-center">
                             Get Started <i class="fas fa-arrow-right ml-2"></i>
                         </a>
-                        <a href="#features" class="border-2 border-blue-600 text-blue-600 px-6 py-3 md:px-8 md:py-4 rounded-lg hover:bg-blue-50 text-base md:text-lg font-semibold w-full md:w-auto text-center mt-2 md:mt-0">
+                        <a href="#features" class="border-2 border-blue-600 text-blue-600 px-6 py-3 md:px-8 md:py-4 rounded-lg hover:bg-blue-400 hover:text-white text-base md:text-lg font-semibold w-full md:w-auto text-center mt-2 md:mt-0">
                             Learn More
                         </a>
                     </div>
@@ -343,11 +344,11 @@
             <p class="mt-4 text-xl text-blue-100 max-w-3xl mx-auto">
                 Join Bulan Veterinary Clinic and experience the future of veterinary record management and AI-assisted diagnostics.
             </p>
-            <div class="mt-10">
-                <a href="{{ route('register') }}" class="bg-white text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 text-lg font-semibold inline-flex items-center">
+            <div class="mt-10 flex flex-col items-center space-y-4 sm:flex-row sm:justify-center sm:space-y-0 sm:space-x-4">
+                <a href="{{ route('register') }}" class="bg-white text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 text-lg font-semibold inline-flex items-center justify-center w-full sm:w-auto">
                     Get Started Now <i class="fas fa-arrow-right ml-3"></i>
                 </a>
-                <a href="{{ route('login') }}" class="ml-4 border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-blue-700 text-lg font-semibold">
+                <a href="{{ route('login') }}" class="border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-blue-700 text-lg font-semibold">
                     Login to Your Account
                 </a>
             </div>

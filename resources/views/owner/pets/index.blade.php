@@ -13,7 +13,9 @@
                         <h3 class="text-lg font-medium text-gray-900">
                             Registered Pets
                         </h3>
-                        <a href="{{ route('pets.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                        <a href="{{ route('pets.create') }}"
+                           class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150
+                           sm:px-4 sm:py-2 px-2 py-1 text-xs">
                             Add New Pet
                         </a>
                     </div>
@@ -27,7 +29,43 @@
                     @if($pets->isEmpty())
                         <p class="text-gray-500">No pets registered yet.</p>
                     @else
-                        <div class="overflow-x-auto">
+                        <!-- Mobile Card List -->
+                        <div class="sm:hidden space-y-4">
+                            @foreach($pets as $pet)
+                                <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between shadow">
+                                    <div class="flex items-center">
+                                        <div class="h-14 w-14 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
+                                            @if($pet->profile_image)
+                                                <img src="{{ asset('storage/'.$pet->profile_image) }}"
+                                                    alt="{{ $pet->name }}"
+                                                    class="w-full h-full object-cover">
+                                            @else
+                                                <span class="flex items-center justify-center h-full w-full text-gray-400 text-xs">No image</span>
+                                            @endif
+                                        </div>
+                                        <div class="ml-3">
+                                            <div class="font-semibold text-gray-900">{{ $pet->name }}</div>
+                                            <div class="text-xs text-gray-500">{{ $pet->species }} &middot; {{ $pet->breed ?? 'N/A' }}</div>
+                                            <div class="text-xs text-gray-500">{{ $pet->age }} years</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-2 ml-2">
+                                        <a href="{{ route('pets.edit', $pet->id) }}" class="text-indigo-600 hover:text-indigo-900 text-xs font-medium">Edit</a>
+                                        <form action="{{ route('pets.destroy', $pet) }}" method="POST" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="button"
+                                                class="text-red-600 hover:text-red-900 text-xs font-medium"
+                                                onclick="confirmAction(event, 'Are you sure you want to delete this pet? All associated appointments will be cancelled.')">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <!-- Desktop Table -->
+                        <div class="hidden sm:block overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>

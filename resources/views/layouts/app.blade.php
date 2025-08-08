@@ -60,8 +60,9 @@
         <!-- Main Content Area -->
         <div class="flex flex-col flex-1 min-h-screen transition-all duration-300"
             :class="{
-                'ml-64': $store.sidebar.expanded,
-                'ml-20': !$store.sidebar.expanded
+                'lg:ml-64': $store.sidebar.expanded,
+                'lg:ml-20': !$store.sidebar.expanded,
+                'ml-0': window.innerWidth < 1024
             }"
             x-init="$nextTick(() => {
                 // Close sidebar on mobile by default
@@ -86,12 +87,6 @@
                                 {{ $header }}
                             </div>
                             <div class="flex items-center space-x-4">
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="text-sm text-red-600 hover:text-red-800">
-                                        {{ __('Log Out') }}
-                                    </button>
-                                </form>
                             </div>
                         </div>
                     </header>

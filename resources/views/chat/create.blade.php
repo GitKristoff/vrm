@@ -1,7 +1,6 @@
 <x-app-layout>
     <div class="max-w-lg mx-auto py-12">
         <h2 class="text-xl font-bold mb-4">Start a New Conversation</h2>
-        <!-- FIX: Update form action -->
         <form action="{{ route('chat.storeConversation') }}" method="POST">
             @csrf
             <label for="user_id" class="block mb-2">Select a user:</label>
@@ -10,7 +9,10 @@
                     <option value="{{ $user->id }}">{{ $user->name }}</option>
                 @endforeach
             </select>
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Start Chat</button>
+            <div class="flex gap-2">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Start Chat</button>
+                <button type="button" onclick="window.history.back();" class="bg-gray-300 text-gray-800 px-4 py-2 rounded">Cancel</button>
+            </div>
         </form>
     </div>
 </x-app-layout>

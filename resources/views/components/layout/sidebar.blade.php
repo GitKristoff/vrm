@@ -122,9 +122,18 @@ if ($role === 'veterinarian') {
     <div
         :class="{
             'w-64': $store.sidebar.expanded,
-            'w-20': !$store.sidebar.expanded
+            'w-20': !$store.sidebar.expanded,
+            'fixed inset-y-0 left-0 z-50': window.innerWidth < 1024 // always fixed on mobile
         }"
         class="bg-gray-800 text-white h-screen transition-all duration-300 transform flex flex-col"
+        x-show="$store.sidebar.expanded || window.innerWidth >= 1024"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="-translate-x-full"
+        x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="translate-x-0"
+        x-transition:leave-end="-translate-x-full"
+        style="display: none"
     >
         <!-- Sidebar Header -->
         <div class="flex items-center justify-between p-4 border-b border-gray-700">
@@ -132,8 +141,9 @@ if ($role === 'veterinarian') {
                 <x-application-logo class="block h-9 w-auto text-white"/>
                 <span class="ml-3 text-xl font-semibold">VRMS</span>
             </div>
+            <!-- Desktop toggle button only -->
             <button @click="$store.sidebar.toggle()"
-                    class="text-gray-400 hover:text-white focus:outline-none">
+                    class="text-gray-400 hover:text-white focus:outline-none hidden lg:block">
                 <svg :class="$store.sidebar.expanded ? '' : 'rotate-180'" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                 </svg>
@@ -231,23 +241,33 @@ if ($role === 'veterinarian') {
             @endforeach
         </nav>
 
-        <!-- Sidebar Footer -->
-        <div class="p-4 border-t border-gray-700">
-            <div class="flex items-center justify-center">
-                <div class="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
-                    <a href="{{route('profile.edit')}}">
+        <!-- Sidebar Footer: Log Out Button -->
+        <div class="mt-auto p-4 border-t border-gray-700">
+            <div class="flex items-center">
+                <a href="{{ route('profile.edit') }}">
+                    <div class="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
                         @if(Auth::user()->profile_picture)
                             <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" alt="Profile" class="h-10 w-10 object-cover rounded-full border">
                         @else
                             <span class="text-sm font-medium text-white">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</span>
                         @endif
-                    </a>
-                </div>
+                    </div>
+                </a>
                 <div :class="$store.sidebar.expanded ? 'ml-3' : 'hidden'" class="text-sm">
                     <p class="font-medium text-white">{{ Auth::user()->name }}</p>
                     <p class="text-gray-400">{{ ucfirst(Auth::user()->role) }}</p>
                 </div>
             </div>
+            <form method="POST" action="{{ route('logout') }}" class="mt-1">
+                @csrf
+                <button type="submit"
+                    class="flex items-center px-3 py-1 rounded hover:bg-gray-700 transition text-xs text-red-500 hover:text-red-700 w-full justify-center"
+                    title="{{ __('Log Out') }}">
+                    <span :class="$store.sidebar.expanded ? 'ml-2 text-red-600 group-hover:text-red-700 font-medium' : 'hidden'">
+                        {{ __('Log Out') }}
+                    </span>
+                </button>
+            </form>
         </div>
     </div>
 </div>

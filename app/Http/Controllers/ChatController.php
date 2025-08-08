@@ -73,10 +73,27 @@ class ChatController extends Controller
     {
         $this->authorize('view', $conversation);
 
-        $request->validate([
-            'body' => 'nullable|string|max:1000',
-            'attachment' => 'nullable|file|max:2048', // Max 2MB
-        ]);
+        $hasAttachment = $request->hasFile('attachment');
+        $body = $request->input('body');
+
+        // Custom validation
+        if (!$hasAttachment && (is_null($body) || trim($body) === '')) {
+            return response()->json([
+                'error' => 'Message body is required unless you are sending an attachment.'
+            ], 422);
+        }
+
+        try {
+            $request->validate([
+                'body' => 'nullable|string|max:1000',
+                'attachment' => 'nullable|file|max:10240', // Max 10MB
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
+        }
 
         $data = [
             'user_id' => Auth::id(),

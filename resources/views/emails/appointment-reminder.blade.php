@@ -46,10 +46,10 @@
                         <div class="detail-label">Date & Time</div>
                         <div class="detail-value">{{ $appointmentDate }}</div>
                     </div>
-                    <div class="detail-card">
+                    {{-- <div class="detail-card">
                         <div class="detail-label">Duration</div>
                         <div class="detail-value">{{ $appointment->duration_minutes }} minutes</div>
-                    </div>
+                    </div> --}}
                     <div class="detail-card">
                         <div class="detail-label">Veterinarian</div>
                         <div class="detail-value">{{ $appointment->veterinarian->user->name }}</div>

@@ -10,7 +10,37 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
                     @if($records->count())
-                        <div class="overflow-x-auto">
+                        <!-- Mobile: Card layout -->
+                        <div class="sm:hidden space-y-4">
+                            @foreach($records as $record)
+                                <div class="bg-gray-50 rounded-lg shadow p-4 flex flex-col gap-2">
+                                    <div class="flex items-center gap-3">
+                                        <div>
+                                            <div class="text-base font-semibold text-gray-900">{{ $record->pet->name }}</div>
+                                            <div class="text-xs text-gray-500">{{ $record->pet->species }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-1 mt-2">
+                                        <span class="text-sm text-gray-500">
+                                            <strong>Veterinarian:</strong> {{ $record->veterinarian->user->name }}
+                                        </span>
+                                        <span class="text-sm text-gray-500">
+                                            <strong>Date:</strong> {{ $record->record_date->format('M d, Y') }}
+                                        </span>
+                                        <span class="text-sm text-gray-500">
+                                            <strong>Assessment:</strong> {{ Str::limit($record->assessment, 50) }}
+                                        </span>
+                                    </div>
+                                    <div class="flex gap-2 mt-3 border-t pt-3">
+                                        <a href="{{ route('medical-records.show', $record->pet) }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <!-- Desktop: Table layout -->
+                        <div class="hidden sm:block overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>

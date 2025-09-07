@@ -8,14 +8,14 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 bg-white border-b border-gray-200">
-                    <div class="flex justify-between items-center mb-6">
+                <div class="p-4 sm:p-6 bg-white border-b border-gray-200">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
                         <h3 class="text-lg font-medium">Manage Appointments</h3>
-                        <div>
-                            <a href="{{ route('appointments.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                            <a href="{{ route('appointments.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150 w-full sm:w-auto">
                                 Create New Appointment
                             </a>
-                            <a href="{{ route('appointments.calendar') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150 ml-2">
+                            <a href="{{ route('appointments.calendar') }}" class="inline-flex items-center justify-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150 w-full sm:w-auto">
                                 View Calendar
                             </a>
                         </div>
@@ -28,7 +28,72 @@
                     @endif
 
                     @if($appointments->count())
-                        <div class="overflow-x-auto">
+                        <!-- Mobile Cards -->
+                        <div class="sm:hidden space-y-4">
+                            @foreach($appointments as $appointment)
+                            <div class="bg-white rounded-lg shadow p-4 flex flex-col gap-3 border border-gray-100">
+                                <div class="flex items-center gap-3">
+                                    @if($appointment->pet->profile_image)
+                                        <img class="h-12 w-12 rounded-full object-cover border" src="{{ asset('storage/'.$appointment->pet->profile_image) }}" alt="{{ $appointment->pet->name }}">
+                                    @else
+                                        <div class="rounded-full bg-gray-200 border-2 border-dashed w-12 h-12"></div>
+                                    @endif
+                                    <div>
+                                        <div class="text-base font-semibold text-gray-900">{{ $appointment->pet->name }}</div>
+                                        <div class="text-sm text-gray-500">{{ $appointment->pet->species }}</div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <div>
+                                        <span class="font-semibold">Veterinarian:</span>
+                                        <span class="text-gray-700">{{ $appointment->veterinarian->user->name ?? 'N/A' }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-semibold">Date & Time:</span>
+                                        <span class="text-gray-700">{{ $appointment->appointment_date->format('M d, Y') }} {{ $appointment->appointment_date->format('h:i A') }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-semibold">Reason:</span>
+                                        <span class="text-gray-700">{{ Str::limit($appointment->reason, 30) }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-semibold">Status:</span>
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                            {{ $appointment->status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                               ($appointment->status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800') }}">
+                                            {{ ucfirst($appointment->status) }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 mt-2">
+                                    <a href="{{ route('appointments.show', $appointment) }}" class="text-indigo-600 hover:text-indigo-900 font-medium">View</a>
+                                    @if($appointment->status === 'Scheduled')
+                                        @if(auth()->user()->role === 'veterinarian' && $appointment->veterinarian_id === auth()->user()->veterinarian->id)
+                                            <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900 font-medium"
+                                                    onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                                    Cancel
+                                                </button>
+                                            </form>
+                                        @elseif(auth()->user()->role === 'owner')
+                                            <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900 font-medium"
+                                                    onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                                    Cancel
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        <!-- Desktop Table -->
+                        <div class="hidden sm:block overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
@@ -43,7 +108,7 @@
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     @foreach($appointments as $appointment)
                                     <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                        <td class="px-6 py-4 whitespace-nowrap flex flex-row items-center">
                                             <div class="flex items-center">
                                                 @if($appointment->pet->profile_image)
                                                     <div class="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden">
@@ -52,7 +117,7 @@
                                                             alt="{{ $appointment->pet->name }}">
                                                     </div>
                                                 @else
-                                                        <div class="rounded-full bg-gray-200 border-2 border-dashed w-10 h-10"></div>
+                                                    <div class="rounded-full bg-gray-200 border-2 border-dashed w-10 h-10"></div>
                                                 @endif
                                                 <div class="ml-4">
                                                     <div class="text-sm font-medium text-gray-900">{{ $appointment->pet->name }}</div>
@@ -78,28 +143,30 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <a href="{{ route('appointments.show', $appointment) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">View</a>
-                                            @if($appointment->status === 'Scheduled')
-                                                @if(auth()->user()->role === 'veterinarian' && $appointment->veterinarian_id === auth()->user()->veterinarian->id)
-                                                    <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-900"
-                                                            onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
-                                                            Cancel
-                                                        </button>
-                                                    </form>
-                                                @elseif(auth()->user()->role === 'owner')
-                                                    <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-900"
-                                                            onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
-                                                            Cancel
-                                                        </button>
-                                                    </form>
+                                            <div class="flex gap-2">
+                                                <a href="{{ route('appointments.show', $appointment) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">View</a>
+                                                @if($appointment->status === 'Scheduled')
+                                                    @if(auth()->user()->role === 'veterinarian' && $appointment->veterinarian_id === auth()->user()->veterinarian->id)
+                                                        <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-600 hover:text-red-900"
+                                                                onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                                                Cancel
+                                                            </button>
+                                                        </form>
+                                                    @elseif(auth()->user()->role === 'owner')
+                                                        <form action="{{ route('appointments.destroy', $appointment) }}" method="POST" class="inline">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-600 hover:text-red-900"
+                                                                onclick="confirmAction(event, 'Are you sure you want to cancel this appointment?')">
+                                                                Cancel
+                                                            </button>
+                                                        </form>
+                                                    @endif
                                                 @endif
-                                            @endif
+                                            </div>
                                         </td>
                                     </tr>
                                     @endforeach

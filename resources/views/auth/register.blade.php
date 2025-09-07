@@ -15,7 +15,7 @@
                         <div class="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto md:mx-0 mb-6">
                             <i class="fas fa-paw text-white text-3xl"></i>
                         </div>
-                        <h2 class="text-3xl font-bold text-white mb-4">Welcome to VetCare</h2>
+                        <h2 class="text-3xl font-bold text-white mb-4">Welcome to VRMS</h2>
                         <p class="text-blue-100 max-w-md">
                             Join our professional veterinary management system to get the best care for your pets.
                             Create your account in minutes and access our complete suite of services.
@@ -64,14 +64,14 @@
                                     <x-input-label for="name" :value="__('Full Name')" />
                                     <x-text-input id="name" class="block w-full mt-1" type="text" name="name"
                                         :value="old('name')" required autofocus autocomplete="name"
-                                        placeholder="John Doe" />
+                                        placeholder="Juan Dela Cruz" />
                                     <x-input-error :messages="$errors->get('name')" class="mt-2" />
                                 </div>
                                 <div>
                                     <x-input-label for="email" :value="__('Email Address')" />
                                     <x-text-input id="email" class="block w-full mt-1" type="email" name="email"
                                         :value="old('email')" required autocomplete="email"
-                                        placeholder="john@example.com" />
+                                        placeholder="juan@gmail.com" />
                                     <x-input-error :messages="$errors->get('email')" class="mt-2" />
                                 </div>
                                 <div>

@@ -25,18 +25,6 @@
                                     placeholder="Owner's concerns, pet's behavior, symptoms, etc.">{{ old('subjective_notes') }}</textarea>
                             </div>
 
-                            <div class="mt-4 mb-4">
-                                <button type="button" id="ai-suggestion-btn" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    <i class="fas fa-robot mr-2"></i>Get AI Suggestion
-                                </button>
-                                <div id="ai-results" class="mt-3 p-3 bg-blue-50 rounded-lg" style="display:none;">
-                                    <h5 class="font-medium text-blue-800">AI Diagnosis Suggestion</h5>
-                                    <p><strong>Condition:</strong> <span id="ai-diagnosis"></span></p>
-                                    <p><strong>Confidence:</strong> <span id="ai-confidence"></span></p>
-                                    <p><strong>Notes:</strong> <span id="ai-notes"></span></p>
-                                </div>
-                            </div>
-
                             <div>
                                 <x-input-label for="objective_notes" :value="__('Objective Findings')" />
                                 <textarea id="objective_notes" name="objective_notes" rows="4" required
@@ -152,6 +140,57 @@
         </div>
     </div>
 
+    <!-- AI Suggestion: moved below SOAP notes for better UX -->
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mt-4">
+        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900 mb-2">AI Assistance</h3>
+            <p class="text-sm text-gray-600 mb-4">Use the AI assistant to get suggested diagnoses, urgency, and recommended next steps based on the SOAP notes you entered. The assistant provides suggestions only — confirm clinically.</p>
+
+            <div class="flex items-center gap-3">
+                <button id="ai-suggestion-btn" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none" type="button">
+                    Get AI Suggestion
+                </button>
+
+                <div id="ai-loading" class="hidden items-center gap-2 text-sm text-gray-600">
+                    <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    <span>Analyzing...</span>
+                </div>
+            </div>
+
+            <div id="ai-results" class="mt-4 hidden">
+                <div class="p-4 rounded-md bg-gray-50 border border-gray-100">
+                    <div class="mb-2">
+                        <strong class="text-sm text-gray-700">Diagnosis</strong>
+                        <div id="ai-diagnosis" class="text-sm text-gray-900 mt-1"></div>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong class="text-sm text-gray-700">Confidence</strong>
+                        <div id="ai-confidence" class="text-sm text-gray-900 mt-1"></div>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong class="text-sm text-gray-700">Possible Conditions</strong>
+                        <div id="ai-possible-conditions" class="text-sm text-gray-900 mt-1"></div>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong class="text-sm text-gray-700">Recommended Treatments / Next Steps</strong>
+                        <div id="ai-recommended-treatments" class="text-sm text-gray-900 mt-1"></div>
+                    </div>
+
+                    <div class="mb-0">
+                        <strong class="text-sm text-gray-700">Notes / Caveats</strong>
+                        <div id="ai-notes" class="text-sm text-gray-900 mt-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             let medicationIndex = 1;
@@ -203,50 +242,75 @@
             });
         });
 
-        document.getElementById('ai-suggestion-btn').addEventListener('click', function() {
-            const symptoms = document.getElementById('subjective_notes').value;
-            const petId = {{ $appointment->pet_id }};
-
-            // Show loading indicator
+        document.addEventListener('DOMContentLoaded', function() {
+            // existing DOMContentLoaded handlers...
+            const aiBtn = document.getElementById('ai-suggestion-btn');
             const aiResults = document.getElementById('ai-results');
-            aiResults.style.display = 'block';
-            aiResults.innerHTML = '<p>Loading AI suggestion...</p>';
+            const aiLoading = document.getElementById('ai-loading');
+            const diagnosisEl = document.getElementById('ai-diagnosis');
+            const confidenceEl = document.getElementById('ai-confidence');
+            const notesEl = document.getElementById('ai-notes');
+            const possibleEl = document.getElementById('ai-possible-conditions');
+            const recommendedEl = document.getElementById('ai-recommended-treatments');
 
-            fetch("{{ route('ai.predict') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    symptoms: symptoms,
-                    pet_id: petId
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                document.getElementById('ai-diagnosis').textContent = data.diagnosis || data.possible_conditions?.[0] || 'Unknown';
-                document.getElementById('ai-confidence').textContent =
-                    Math.round((data.confidence || data.confidence_score || 0) * 100) + '%';
-                document.getElementById('ai-notes').textContent = data.additional_notes;
-                aiResults.style.display = 'block';
+            if (aiBtn) {
+                aiBtn.addEventListener('click', function() {
+                    // gather SOAP fields; adjust IDs if your inputs differ
+                    const subjective = document.getElementById('subjective_notes')?.value || '';
+                    const objective = document.getElementById('objective_notes')?.value || '';
+                    const assessment = document.getElementById('assessment_notes')?.value || '';
+                    const plan = document.getElementById('plan_notes')?.value || '';
 
-                // Auto-fill assessment field with AI suggestion
-                document.getElementById('assessment').value =
-                    `AI Suggestion: ${data.diagnosis}\n${data.additional_notes}`;
-            })
-            .catch(error => {
-                console.error('AI Error:', error);
-                aiResults.innerHTML = `
-                    <p class="text-red-600">Error: ${error.message}</p>
-                    <p class="text-sm">Please try again or contact support</p>
-                `;
-            });
+                    const prompt = `Subjective: ${subjective}\nObjective: ${objective}\nAssessment: ${assessment}\nPlan: ${plan}`;
+
+                    aiLoading.classList.remove('hidden');
+                    aiResults.classList.add('hidden');
+
+                    fetch("{{ route('ai.predict') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            symptoms: prompt,
+                            pet_id: {{ $appointment->pet_id }}
+                        })
+                    })
+                    .then(response => {
+                        aiLoading.classList.add('hidden');
+                        if (!response.ok) {
+                            return response.json().then(j => { throw j; });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        aiResults.classList.remove('hidden');
+
+                        if (data.raw) {
+                            // fallback: show raw content
+                            diagnosisEl.textContent = data.raw;
+                            confidenceEl.textContent = '';
+                            notesEl.textContent = '';
+                            possibleEl.textContent = '';
+                            recommendedEl.textContent = '';
+                            return;
+                        }
+
+                        diagnosisEl.textContent = data.diagnosis || '—';
+                        confidenceEl.textContent = (data.confidence !== null && data.confidence !== undefined) ? Math.round(parseFloat(data.confidence)*100) + '%' : '—';
+                        notesEl.textContent = data.additional_notes || '—';
+                        possibleEl.textContent = (Array.isArray(data.possible_conditions) ? data.possible_conditions.join(', ') : (data.possible_conditions || '—'));
+                        recommendedEl.textContent = (Array.isArray(data.recommended_treatments) ? data.recommended_treatments.join('; ') : (data.recommended_treatments || '—'));
+                    })
+                    .catch(err => {
+                        aiLoading.classList.add('hidden');
+                        aiResults.classList.remove('hidden');
+                        diagnosisEl.textContent = 'AI error. See console.';
+                        console.error('AI suggestion error', err);
+                    });
+                });
+            }
         });
     </script>
 </x-app-layout>

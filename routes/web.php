@@ -114,6 +114,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/appointments/{appointment}/edit', [AppointmentController::class, 'edit'])->name('appointments.edit');
     Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
+    Route::post('/appointments/{appointment}/approve', [AppointmentController::class, 'approve'])
+    ->name('appointments.approve');
     Route::get('/appointments/{appointment}/checkin', [AppointmentController::class, 'checkinForm'])
     ->name('appointments.checkin.create');
     Route::post('/appointments/{appointment}/checkin', [AppointmentController::class, 'checkinStore'])
@@ -164,6 +166,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/ai-chat', [AIChatController::class, 'store'])
         ->name('ai.chat.store')
         ->middleware('throttle:10,1'); // 10 requests per minute, adjust as needed
+
+    // NEW: AI Suggestion for veterinarian SOAP (used by pets.show and appointments.checkin)
+    Route::post('/ai/predict', [\App\Http\Controllers\AISuggestionController::class, 'predict'])
+        ->name('ai.predict')
+        ->middleware('throttle:10,1'); // limit requests as appropriate
 });
 
 require __DIR__.'/auth.php';

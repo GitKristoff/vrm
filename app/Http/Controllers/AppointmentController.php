@@ -82,11 +82,10 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
-        // Validate request first
         $request->validate([
             'pet_id' => 'required|exists:pets,id',
             'veterinarian_id' => 'required|exists:veterinarians,id',
-            'appointment_date' => 'required|date',
+            'appointment_date' => 'required|string', // adjust to your input shape
             'reason' => 'required|string|max:255',
             'duration_minutes' => 'required|integer|min:15',
             'type' => 'required|string|max:50',
@@ -104,84 +103,19 @@ class AppointmentController extends Controller
                 ->withErrors(['veterinarian_id' => 'The selected veterinarian is currently unavailable (' . ucfirst($vet->status) . ').']);
         }
 
-        // Parse appointment datetime in Manila timezone (owner input assumed Manila)
-        $appointmentManila = Carbon::parse($request->appointment_date, 'Asia/Manila');
-        $dayName = $appointmentManila->format('l'); // e.g. Monday
-
-        // Enforce working days if configured
-        if (!empty($vet->working_days) && is_array($vet->working_days) && count($vet->working_days) > 0) {
-            if (!in_array($dayName, $vet->working_days)) {
-                return back()->withInput()
-                    ->withErrors(['appointment_date' => 'The selected veterinarian does not work on ' . $dayName . '. Please choose another day.']);
-            }
-        }
-
-        // Enforce working hours if configured (compare H:i)
-        if (!empty($vet->start_time) && !empty($vet->end_time)) {
-            $apptTime = $appointmentManila->format('H:i');
-            // ensure start_time < end_time
-            if ($vet->start_time >= $vet->end_time) {
-                return back()->withInput()
-                    ->withErrors(['veterinarian_id' => 'Veterinarian schedule is invalid. Please contact admin.']);
-            }
-            if ($apptTime < $vet->start_time || $apptTime >= $vet->end_time) {
-                return back()->withInput()
-                    ->withErrors(['appointment_date' => 'Please choose a time between ' . Carbon::parse($vet->start_time)->format('g:i A') . ' and ' . Carbon::parse($vet->end_time)->format('g:i A') . '.']);
-            }
-        }
-
-        // BEFORE creating: enforce per-day type limit (Asia/Manila)
-        $limits = config('appointment_limits', []);
-        $apptType = $request->type;
-
-        $appointmentManila = Carbon::parse($request->appointment_date, 'Asia/Manila');
-        $dayStartUtc = $appointmentManila->copy()->startOfDay()->setTimezone('UTC');
-        $dayEndUtc = $appointmentManila->copy()->endOfDay()->setTimezone('UTC');
-
-        $limitForType = $limits[$apptType] ?? null;
-        if ($limitForType !== null) {
-            $existingCount = Appointment::where('type', $apptType)
-                ->where('status', 'Scheduled')
-                ->whereBetween('appointment_date', [$dayStartUtc, $dayEndUtc])
-                ->count();
-
-            if ($existingCount >= $limitForType) {
-                return back()->withInput()
-                    ->withErrors(['appointment_date' => 'Daily limit reached for ' . ucfirst($apptType) . '. Please choose another day or type.']);
-            }
-        }
-
-        // Convert to UTC for storage and conflict checks
-        $startTimeUtc = $appointmentManila->copy()->setTimezone('UTC');
-        $endTimeUtc = $startTimeUtc->copy()->addMinutes((int)$request->duration_minutes);
-
-        // Check vet availability conflicts (DB stores UTC)
-        $conflictingAppointments = Appointment::where('veterinarian_id', $request->veterinarian_id)
-            ->where('status', 'Scheduled')
-            ->where(function ($query) use ($startTimeUtc, $endTimeUtc) {
-                $query->where(function ($q) use ($startTimeUtc, $endTimeUtc) {
-                    $q->where('appointment_date', '<', $endTimeUtc)
-                      ->whereRaw("DATE_ADD(appointment_date, INTERVAL duration_minutes MINUTE) > ?", [$startTimeUtc]);
-                });
-            })
-            ->exists();
-
-        if ($conflictingAppointments) {
-            return back()->withInput()
-                ->withErrors(['appointment_date' => 'The veterinarian is not available at this time. Please choose another time slot.']);
-        }
-
-        Log::info($request->all());
+        // Accept the datetime-local value (no manual timezone conversion).
+        // The Appointment model's mutator will parse this using config('app.timezone') and store UTC.
+        $inputDate = $request->input('appointment_date'); // e.g. "2025-11-02T16:00" from <input type="datetime-local">
 
         $appointment = Appointment::create([
             'pet_id' => $request->pet_id,
             'veterinarian_id' => $request->veterinarian_id,
-            // save in UTC
-            'appointment_date' => $startTimeUtc->format('Y-m-d H:i:s'),
+            'appointment_date' => $inputDate,
             'reason' => $request->reason,
             'duration_minutes' => $request->duration_minutes,
             'type' => $request->type,
-            'status' => 'Scheduled',
+            'status' => 'scheduled',
+            'approved' => false,
         ]);
 
         // Send notifications
@@ -272,6 +206,11 @@ class AppointmentController extends Controller
             abort(403);
         }
 
+        // Require approval before check-in
+        if (!$appointment->approved) {
+            return back()->with('error', 'Appointment must be approved by the veterinarian before check-in.');
+        }
+
         return view('appointments.checkin', compact('appointment'));
     }
 
@@ -282,6 +221,11 @@ class AppointmentController extends Controller
         if ($user->role !== 'veterinarian' ||
             $appointment->veterinarian_id !== $user->veterinarian->id) {
             abort(403);
+        }
+
+        // Require approval before storing check-in/medical record
+        if (!$appointment->approved) {
+            return back()->with('error', 'Appointment must be approved before completing.');
         }
 
         $service = new MedicalRecordService();
@@ -382,5 +326,29 @@ class AppointmentController extends Controller
         }
 
         return response()->json(['remaining' => $remaining]);
+    }
+
+    /**
+     * Veterinarian (or admin) approves an appointment so check-in is allowed.
+     */
+    public function approve(Appointment $appointment)
+    {
+        $user = Auth::user();
+
+        // Only veterinarian assigned to the appointment or admin can approve
+        if ($user->role === 'veterinarian') {
+            if (!$user->veterinarian || $appointment->veterinarian_id !== $user->veterinarian->id) {
+                abort(403);
+            }
+        } elseif ($user->role !== 'admin') {
+            abort(403);
+        }
+
+        $appointment->approved = true;
+        // Use normalized status value that matches DB (lowercase)
+        $appointment->status = 'approved';
+        $appointment->save();
+
+        return back()->with('success', 'Appointment approved.');
     }
 }

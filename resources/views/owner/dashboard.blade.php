@@ -20,7 +20,7 @@
                         $remaining = [];
                         foreach ($limits as $type => $limit) {
                             $count = \App\Models\Appointment::where('type', $type)
-                                ->where('status', 'Scheduled')
+                                ->where('status', 'scheduled')
                                 ->whereBetween('appointment_date', [$dayStartUtc, $dayEndUtc])
                                 ->count();
                             $remaining[$type] = max(0, $limit - $count);

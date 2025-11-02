@@ -40,7 +40,7 @@
             @endif
 
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-200">
                     <div class="flex items-center">
                         <div class="bg-blue-100 p-3 rounded-full mr-4">
@@ -82,6 +82,30 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Approved appointments card --}}
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="bg-emerald-100 p-3 rounded-full mr-4">
+                            <svg class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Approved</p>
+                            @php
+                                $approvedCount = $appointments
+                                    ? $appointments->filter(function($a) {
+                                        $status = strtolower($a->status ?? '');
+                                        // include only approved and not completed
+                                        return $status !== 'completed' && ($status === 'approved' || (!empty($a->approved) && $a->approved));
+                                    })->count()
+                                    : 0;
+                            @endphp
+                            <p class="text-2xl font-semibold text-gray-900">{{ $approvedCount }}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Add remaining slots overview -->
@@ -105,6 +129,47 @@
                 </div>
             </div>
 
+            <!-- Approved Appointments List (quick access) -->
+            @php
+                $approvedAppointments = $appointments
+                    ? $appointments->filter(function($a) {
+                        $status = strtolower($a->status ?? '');
+                        return $status !== 'completed' && ($status === 'approved' || (!empty($a->approved) && $a->approved));
+                    })->sortBy('appointment_date')
+                    : collect();
+            @endphp
+
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">Approved Appointments</h3>
+                    <a href="{{ route('appointments.index') }}" class="text-sm text-indigo-600 hover:underline">See all</a>
+                </div>
+
+                @if($approvedAppointments->count())
+                    <ul class="divide-y divide-gray-100">
+                        @foreach($approvedAppointments->take(5) as $appointment)
+                            <li class="py-3 flex items-center justify-between">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ $appointment->pet->name ?? 'Unknown Pet' }}</div>
+                                    <div class="text-sm text-gray-500">{{ $appointment->appointment_date->format('M d, Y h:i A') }}</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <a href="{{ route('appointments.show', $appointment) }}" class="text-indigo-600 hover:text-indigo-900 text-sm">View</a>
+
+                                    @if((auth()->user()->role === 'veterinarian' && isset(auth()->user()->veterinarian) && $appointment->veterinarian_id === auth()->user()->veterinarian->id) || auth()->user()->role === 'admin')
+                                        <a href="{{ route('appointments.checkin.create', $appointment) }}" class="text-green-600 hover:text-green-900 text-sm ml-2">
+                                            Check-in
+                                        </a>
+                                    @endif
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @else
+                    <div class="text-sm text-gray-600">No approved appointments at the moment.</div>
+                @endif
+            </div>
+
             <!-- Upcoming Appointments Table -->
             @if(!($isAdmin ?? false))
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -123,7 +188,7 @@
                         // - Starting from today
                         $upcomingAppointments = $appointments
                             ? $appointments->filter(function($appointment) {
-                                return $appointment->status === 'Scheduled';
+                                return strtolower($appointment->status ?? '') === 'scheduled';
                             })->sortBy('appointment_date')
                             : collect();
                     @endphp
@@ -171,37 +236,51 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <a href="{{ route('appointments.show', $appointment) }}"
+
                                                     class="text-indigo-600 hover:text-indigo-900">View</a>
 
-                                                @if($appointment->status === 'Scheduled')
+                                                @if($appointment->status === 'scheduled')
                                                     @php
                                                         $isOverdue = $appointment->appointment_date < now();
                                                     @endphp
 
-                                                    @if($isOverdue)
-                                                        <a href="{{ route('appointments.checkin.create', $appointment) }}"
-                                                        class="text-green-600 hover:text-green-900 ml-3"
-                                                        onclick="event.preventDefault();
-                                                                    Swal.fire({
-                                                                        title: 'Appointment Overdue',
-                                                                        text: 'This appointment is overdue (scheduled for {{ $appointment->appointment_date->format('M d, Y h:i A') }}). Are you sure you want to check in?',
-                                                                        icon: 'warning',
-                                                                        showCancelButton: true,
-                                                                        confirmButtonColor: '#3085d6',
-                                                                        cancelButtonColor: '#d33',
-                                                                        confirmButtonText: 'Yes, check in'
-                                                                    }).then((result) => {
-                                                                        if (result.isConfirmed) {
-                                                                            window.location.href = '{{ route('appointments.checkin.create', $appointment) }}';
-                                                                        }
-                                                                    });">
-                                                            Check-in
-                                                        </a>
+                                                    @if($appointment->approved)
+                                                        {{-- Approved: show check-in (with same overdue confirm behavior) --}}
+                                                        @if($isOverdue)
+                                                            <a href="{{ route('appointments.checkin.create', $appointment) }}"
+                                                            class="text-green-600 hover:text-green-900 ml-3"
+                                                            onclick="event.preventDefault();
+                                                                        Swal.fire({
+                                                                            title: 'Appointment Overdue',
+                                                                            text: 'This appointment is overdue (scheduled for {{ $appointment->appointment_date->format('M d, Y h:i A') }}). Are you sure you want to check in?',
+                                                                            icon: 'warning',
+                                                                            showCancelButton: true,
+                                                                            confirmButtonColor: '#3085d6',
+                                                                            cancelButtonColor: '#d33',
+                                                                            confirmButtonText: 'Yes, check in'
+                                                                        }).then((result) => {
+                                                                            if (result.isConfirmed) {
+                                                                                window.location.href = '{{ route('appointments.checkin.create', $appointment) }}';
+                                                                            }
+                                                                        });">
+                                                                Check-in
+                                                            </a>
+                                                        @else
+                                                            <a href="{{ route('appointments.checkin.create', $appointment) }}"
+                                                            class="text-green-600 hover:text-green-900 ml-3">
+                                                                Check-in
+                                                            </a>
+                                                        @endif
                                                     @else
-                                                        <a href="{{ route('appointments.checkin.create', $appointment) }}"
-                                                        class="text-green-600 hover:text-green-900 ml-3">
-                                                            Check-in
-                                                        </a>
+                                                        {{-- Not approved: show Approve button for assigned veterinarian --}}
+                                                        @if(auth()->user()->role === 'veterinarian' && auth()->user()->veterinarian && auth()->user()->veterinarian->id === $appointment->veterinarian_id)
+                                                            <form method="POST" action="{{ route('appointments.approve', $appointment) }}" class="inline-block ml-3">
+                                                                @csrf
+                                                                <button type="submit" class="text-green-600 hover:text-green-900">Approve</button>
+                                                            </form>
+                                                        @else
+                                                            <span class="ml-3 text-sm text-gray-500">Awaiting approval</span>
+                                                        @endif
                                                     @endif
                                                 @endif
                                             </td>
@@ -240,7 +319,7 @@
                         // Show all scheduled appointments, including overdue
                         $scheduledAppointmentsList = $appointments
                             ? $appointments->filter(function($appointment) {
-                                return $appointment->status === 'Scheduled';
+                                return strtolower($appointment->status ?? '') === 'scheduled';
                             })->sortBy('appointment_date')
                             : collect();
                     @endphp

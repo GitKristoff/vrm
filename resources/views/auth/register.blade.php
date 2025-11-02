@@ -140,18 +140,26 @@
                                 Account Security
                             </h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
+                                <div class="relative">
                                     <x-input-label for="password" :value="__('Password')" />
-                                    <x-text-input id="password" class="block w-full mt-1" type="password"
+                                    <x-text-input id="password" class="block w-full mt-1 pr-10" type="password"
                                         name="password" required autocomplete="new-password"
                                         placeholder="At least 8 characters" />
+                                    <button type="button" class="absolute top-9 right-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                        onclick="togglePassword('password', this)">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
                                     <x-input-error :messages="$errors->get('password')" class="mt-2" />
                                 </div>
-                                <div>
+                                <div class="relative">
                                     <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-                                    <x-text-input id="password_confirmation" class="block w-full mt-1"
+                                    <x-text-input id="password_confirmation" class="block w-full mt-1 pr-10"
                                         type="password" name="password_confirmation" required
                                         autocomplete="new-password" placeholder="Retype your password" />
+                                    <button type="button" class="absolute top-9 right-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                        onclick="togglePassword('password_confirmation', this)">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
                                     <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
                                 </div>
                             </div>
@@ -161,6 +169,20 @@
                                 <p>• Add numbers or symbols for extra security</p>
                             </div>
                         </div>
+                        <script>
+                        function togglePassword(fieldId, btn) {
+                            const input = document.getElementById(fieldId);
+                            if (input.type === "password") {
+                                input.type = "text";
+                                btn.querySelector('i').classList.remove('fa-eye');
+                                btn.querySelector('i').classList.add('fa-eye-slash');
+                            } else {
+                                input.type = "password";
+                                btn.querySelector('i').classList.remove('fa-eye-slash');
+                                btn.querySelector('i').classList.add('fa-eye');
+                            }
+                        }
+                        </script>
 
                         <div class="flex flex-col sm:flex-row items-center justify-between mt-8">
                             <a class="text-blue-600 hover:text-blue-800 text-sm font-medium" href="{{ route('login') }}">

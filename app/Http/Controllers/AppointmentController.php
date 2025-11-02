@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\NewAppointmentNotification;
 use App\Services\MedicalRecordService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 
 class AppointmentController extends Controller
@@ -54,18 +55,34 @@ class AppointmentController extends Controller
             $selectedPet = $pets->first()->id ?? null;
         }
 
-        $vets = Veterinarian::with('user')->get();
+        // Exclude veterinarians who belong to system admin users
+        $vets = Veterinarian::with('user')
+            ->whereHas('user', function($q) {
+                $q->where('role', '!=', 'admin');
+            })
+            ->get();
 
-        return view('appointments.create', compact('pets', 'vets', 'selectedPet'));
+        // compute remaining slots for today (Asia/Manila)
+        $limits = config('appointment_limits', []);
+        $todayManila = Carbon::now('Asia/Manila');
+        $dayStartUtc = $todayManila->copy()->startOfDay()->setTimezone('UTC');
+        $dayEndUtc = $todayManila->copy()->endOfDay()->setTimezone('UTC');
+
+        $remainingLimits = [];
+        foreach ($limits as $type => $limit) {
+            $count = Appointment::where('type', $type)
+                ->where('status', 'Scheduled')
+                ->whereBetween('appointment_date', [$dayStartUtc, $dayEndUtc])
+                ->count();
+            $remainingLimits[$type] = max(0, $limit - $count);
+        }
+
+        return view('appointments.create', compact('pets', 'vets', 'selectedPet', 'remainingLimits'));
     }
 
     public function store(Request $request)
     {
-
-        // Convert to Manila time first, then UTC
-        $appointmentDate = Carbon::parse($request->appointment_date, 'Asia/Manila')->format('Y-m-d H:i:s');
-
-        // Validate request
+        // Validate request first
         $request->validate([
             'pet_id' => 'required|exists:pets,id',
             'veterinarian_id' => 'required|exists:veterinarians,id',
@@ -75,17 +92,76 @@ class AppointmentController extends Controller
             'type' => 'required|string|max:50',
         ]);
 
-        // Convert to Carbon instance
-        $startTime = Carbon::parse($request->appointment_date);
-        $endTime = $startTime->copy()->addMinutes((int)$request->duration_minutes);
+        // Find selected veterinarian
+        $vet = Veterinarian::find($request->veterinarian_id);
+        if (!$vet) {
+            return back()->withInput()->withErrors(['veterinarian_id' => 'Selected veterinarian not found.']);
+        }
 
-        // Check vet availability
+        // Do not allow booking if vet status is not "in"
+        if (!empty($vet->status) && $vet->status !== 'in') {
+            return back()->withInput()
+                ->withErrors(['veterinarian_id' => 'The selected veterinarian is currently unavailable (' . ucfirst($vet->status) . ').']);
+        }
+
+        // Parse appointment datetime in Manila timezone (owner input assumed Manila)
+        $appointmentManila = Carbon::parse($request->appointment_date, 'Asia/Manila');
+        $dayName = $appointmentManila->format('l'); // e.g. Monday
+
+        // Enforce working days if configured
+        if (!empty($vet->working_days) && is_array($vet->working_days) && count($vet->working_days) > 0) {
+            if (!in_array($dayName, $vet->working_days)) {
+                return back()->withInput()
+                    ->withErrors(['appointment_date' => 'The selected veterinarian does not work on ' . $dayName . '. Please choose another day.']);
+            }
+        }
+
+        // Enforce working hours if configured (compare H:i)
+        if (!empty($vet->start_time) && !empty($vet->end_time)) {
+            $apptTime = $appointmentManila->format('H:i');
+            // ensure start_time < end_time
+            if ($vet->start_time >= $vet->end_time) {
+                return back()->withInput()
+                    ->withErrors(['veterinarian_id' => 'Veterinarian schedule is invalid. Please contact admin.']);
+            }
+            if ($apptTime < $vet->start_time || $apptTime >= $vet->end_time) {
+                return back()->withInput()
+                    ->withErrors(['appointment_date' => 'Please choose a time between ' . Carbon::parse($vet->start_time)->format('g:i A') . ' and ' . Carbon::parse($vet->end_time)->format('g:i A') . '.']);
+            }
+        }
+
+        // BEFORE creating: enforce per-day type limit (Asia/Manila)
+        $limits = config('appointment_limits', []);
+        $apptType = $request->type;
+
+        $appointmentManila = Carbon::parse($request->appointment_date, 'Asia/Manila');
+        $dayStartUtc = $appointmentManila->copy()->startOfDay()->setTimezone('UTC');
+        $dayEndUtc = $appointmentManila->copy()->endOfDay()->setTimezone('UTC');
+
+        $limitForType = $limits[$apptType] ?? null;
+        if ($limitForType !== null) {
+            $existingCount = Appointment::where('type', $apptType)
+                ->where('status', 'Scheduled')
+                ->whereBetween('appointment_date', [$dayStartUtc, $dayEndUtc])
+                ->count();
+
+            if ($existingCount >= $limitForType) {
+                return back()->withInput()
+                    ->withErrors(['appointment_date' => 'Daily limit reached for ' . ucfirst($apptType) . '. Please choose another day or type.']);
+            }
+        }
+
+        // Convert to UTC for storage and conflict checks
+        $startTimeUtc = $appointmentManila->copy()->setTimezone('UTC');
+        $endTimeUtc = $startTimeUtc->copy()->addMinutes((int)$request->duration_minutes);
+
+        // Check vet availability conflicts (DB stores UTC)
         $conflictingAppointments = Appointment::where('veterinarian_id', $request->veterinarian_id)
             ->where('status', 'Scheduled')
-            ->where(function ($query) use ($startTime, $endTime) {
-                $query->where(function ($q) use ($startTime, $endTime) {
-                    $q->where('appointment_date', '<', $endTime)
-                    ->whereRaw("DATE_ADD(appointment_date, INTERVAL duration_minutes MINUTE) > ?", [$startTime]);
+            ->where(function ($query) use ($startTimeUtc, $endTimeUtc) {
+                $query->where(function ($q) use ($startTimeUtc, $endTimeUtc) {
+                    $q->where('appointment_date', '<', $endTimeUtc)
+                      ->whereRaw("DATE_ADD(appointment_date, INTERVAL duration_minutes MINUTE) > ?", [$startTimeUtc]);
                 });
             })
             ->exists();
@@ -100,7 +176,8 @@ class AppointmentController extends Controller
         $appointment = Appointment::create([
             'pet_id' => $request->pet_id,
             'veterinarian_id' => $request->veterinarian_id,
-            'appointment_date' => $appointmentDate,
+            // save in UTC
+            'appointment_date' => $startTimeUtc->format('Y-m-d H:i:s'),
             'reason' => $request->reason,
             'duration_minutes' => $request->duration_minutes,
             'type' => $request->type,
@@ -108,8 +185,8 @@ class AppointmentController extends Controller
         ]);
 
         // Send notifications
-        $vet = Veterinarian::with('user')->find($request->veterinarian_id);
-        $vet->user->notify(new NewAppointmentNotification($appointment));
+        $vetModel = Veterinarian::with('user')->find($request->veterinarian_id);
+        $vetModel->user->notify(new NewAppointmentNotification($appointment));
 
         // Also notify admin
         $admins = User::where('role', 'admin')->get();
@@ -185,7 +262,6 @@ class AppointmentController extends Controller
 
         return back()->with('error', 'Only scheduled appointments can be cancelled');
     }
-
 
     public function checkinForm(Appointment $appointment)
     {
@@ -278,5 +354,33 @@ class AppointmentController extends Controller
         }
 
         return response()->json(['sent' => count($appointments)]);
+    }
+
+    /**
+     * Return remaining appointment slots for a given datetime (owner selects date/time).
+     * Expects 'date' param (any parseable datetime string). Parses as Asia/Manila.
+     */
+    public function remainingSlots(Request $request): JsonResponse
+    {
+        $request->validate([
+            'date' => 'required|date'
+        ]);
+
+        $requested = Carbon::parse($request->input('date'), 'Asia/Manila');
+        $dayStartUtc = $requested->copy()->startOfDay()->setTimezone('UTC');
+        $dayEndUtc = $requested->copy()->endOfDay()->setTimezone('UTC');
+
+        $limits = config('appointment_limits', []);
+
+        $remaining = [];
+        foreach ($limits as $type => $limit) {
+            $count = Appointment::where('type', $type)
+                ->where('status', 'Scheduled')
+                ->whereBetween('appointment_date', [$dayStartUtc, $dayEndUtc])
+                ->count();
+            $remaining[$type] = max(0, $limit - $count);
+        }
+
+        return response()->json(['remaining' => $remaining]);
     }
 }

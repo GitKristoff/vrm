@@ -29,10 +29,6 @@ class VetController extends Controller
         $veterinarian = $user->veterinarian()->firstOrCreate(
             [],
             [
-                'user_id' => $user->id,
-                'license_number' => 'TEMP-' . Str::uuid(),
-                'specialization' => 'General Practice',
-                'phone' => $user->phone ?? 'N/A',
             ]
         );
 
@@ -40,10 +36,6 @@ class VetController extends Controller
         $adminStats = null;
         if ($isAdmin) {
             $adminStats = [
-                'totalUsers' => User::count(),
-                'totalVets' => Veterinarian::count(),
-                'totalAppointments' => Appointment::count(),
-                'activeAppointments' => Appointment::where('status', 'Scheduled')->count(),
             ];
         }
 
@@ -54,25 +46,38 @@ class VetController extends Controller
         $appointments = collect();
 
         if (!$isAdmin) {
-            $allAppointments = $veterinarian->appointments()
-                ->with('pet.owner.user')
-                ->get();
+            // load appointments as a Collection (eager load relations used in views)
+            $appointments = $veterinarian->appointments()->with(['pet', 'pet.owner.user'])->get();
 
-            $todaysAppointments = $allAppointments->filter(function($appointment) {
-                return $appointment->appointment_date->isToday() &&
-                    $appointment->status === 'Scheduled';
+            $todayManila = Carbon::now('Asia/Manila');
+
+            // Count today's appointments (compare in Asia/Manila)
+            $todaysAppointments = $appointments->filter(function($appointment) use ($todayManila) {
+                if (! $appointment->appointment_date) return false;
+                $apptLocal = $appointment->appointment_date->setTimezone('Asia/Manila');
+                return $apptLocal->isSameDay($todayManila);
             })->count();
 
-            $completedAppointments = $allAppointments->where('status', 'Completed')->count();
-            $scheduledAppointments = $allAppointments->where('status', 'Scheduled')->count();
-
-            $appointments = $veterinarian->appointments()
-                ->with('pet.owner.user')
-                ->where('status', 'Scheduled')
-                ->where('appointment_date', '>=', Carbon::today())
-                ->orderBy('appointment_date', 'asc')
-                ->get();
+            // Use case-insensitive status checks to avoid mismatches
+            $completedAppointments = $appointments->filter(fn($a) => strtolower($a->status) === 'completed')->count();
+            $scheduledAppointments = $appointments->filter(fn($a) => strtolower($a->status) === 'scheduled')->count();
         }
+
+        // --- NEW: compute remaining limits for today ---
+        $limits = config('appointment_limits', []);
+        $todayManila = Carbon::now('Asia/Manila');
+        $dayStartUtc = $todayManila->copy()->startOfDay()->setTimezone('UTC');
+        $dayEndUtc = $todayManila->copy()->endOfDay()->setTimezone('UTC');
+
+        $remainingLimits = [];
+        foreach ($limits as $type => $limit) {
+            $count = Appointment::where('type', $type)
+                ->where('status', 'Scheduled')
+                ->whereBetween('appointment_date', [$dayStartUtc, $dayEndUtc])
+                ->count();
+            $remainingLimits[$type] = max(0, $limit - $count);
+        }
+        // --- /NEW ---
 
         return view('vet.dashboard', [
             'isAdmin' => $isAdmin,
@@ -80,7 +85,8 @@ class VetController extends Controller
             'todaysAppointments' => $todaysAppointments,
             'completedAppointments' => $completedAppointments,
             'scheduledAppointments' => $scheduledAppointments,
-            'appointments' => $appointments
+            'appointments' => $appointments,
+            'remainingLimits' => $remainingLimits
         ]);
     }
 

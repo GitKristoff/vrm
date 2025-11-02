@@ -11,11 +11,14 @@ class AdminController extends Controller
     public function dashboard(): View
     {
         // Use with() to prevent N+1 queries
-        $users = User::with(['owner', 'veterinarian'])->get();
+        // exclude system admin users
+        $users = User::with(['owner', 'veterinarian'])
+            ->where('role', '!=', 'admin')
+            ->get();
 
         // Add statistics for dashboard
         $stats = [
-            'total_users' => User::count(),
+            'total_users' => User::where('role', '!=', 'admin')->count(),
             'total_vets' => User::where('role', 'veterinarian')->count(),
             'total_owners' => User::where('role', 'owner')->count(),
             'total_admins' => User::where('role', 'admin')->count(),
@@ -38,6 +41,11 @@ class AdminController extends Controller
     public function destroy(User $user)
     {
         try {
+            // Prevent any action on system admin account
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.dashboard')
+                    ->with('error', 'Cannot delete or modify the system admin.');
+            }
             // Prevent deletion of current admin
             if ($user->id === Auth::id()) {
                 return redirect()->route('admin.dashboard')
@@ -60,7 +68,10 @@ class AdminController extends Controller
 
     public function users()
     {
-        $users = User::with(['owner', 'veterinarian'])->paginate(10);
+        // exclude system admin users from list
+        $users = User::with(['owner', 'veterinarian'])
+            ->where('role', '!=', 'admin')
+            ->paginate(10);
         return view('admin.users.index', compact('users'));
     }
 }

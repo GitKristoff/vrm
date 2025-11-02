@@ -11,6 +11,7 @@ use App\Http\Controllers\PetController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\AIChatController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -117,6 +118,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ->name('appointments.checkin.create');
     Route::post('/appointments/{appointment}/checkin', [AppointmentController::class, 'checkinStore'])
     ->name('appointments.checkin.store');
+    Route::get('/appointments/remaining', [AppointmentController::class, 'remainingSlots'])->name('appointments.remaining');
 
     // Medical Records Routes
     Route::get('/medical-records', [MedicalRecordController::class, 'index'])
@@ -137,8 +139,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // AI Diagnosis Routes
-Route::middleware(['auth', 'verified'])->post('/ai/predict', [AIController::class, 'predict'])
-    ->name('ai.predict');
+// Route::middleware(['auth', 'verified'])->post('/ai/predict', [AIController::class, 'predict'])
+//     ->name('ai.predict');
 
 // Profile routes
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -157,6 +159,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/conversation/{conversation}', [ChatController::class, 'destroy'])->name('chat.conversation.destroy');
 
     });
+
+    // AI Chat Routes
+    Route::post('/ai-chat', [AIChatController::class, 'store'])
+        ->name('ai.chat.store')
+        ->middleware('throttle:10,1'); // 10 requests per minute, adjust as needed
 });
 
 require __DIR__.'/auth.php';

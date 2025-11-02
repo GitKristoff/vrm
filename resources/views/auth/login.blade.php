@@ -23,11 +23,29 @@
         </div>
 
         <!-- Password -->
-        <div class="mt-6">
+        <div class="mt-6 relative">
             <x-input-label for="password" :value="__('Password')" />
-            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" />
+            <x-text-input id="password" class="block mt-1 w-full pr-10" type="password" name="password" required autocomplete="current-password" />
+            <span class="absolute top-9 right-3 cursor-pointer" onclick="togglePassword()">
+            <i id="eyeIcon" class="fas fa-eye text-gray-400"></i>
+            </span>
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
+        <script>
+            function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+            }
+        </script>
 
         <!-- Remember Me -->
         <div class="flex items-center justify-between mt-6">

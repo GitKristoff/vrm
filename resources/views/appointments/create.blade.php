@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
-                    <form method="POST" action="{{ route('appointments.store') }}">
+                    <form id="appointment-form" method="POST" action="{{ route('appointments.store') }}">
                         @csrf
 
                         <!-- Pet Selection -->
@@ -46,7 +46,29 @@
                         </div>
 
                         <!-- Vet Info Displayed Here, outside the grid for clarity -->
-                        <div id="vet-info" class="mb-6 text-sm text-gray-600 border rounded p-2 bg-gray-50"></div>
+                        <div id="vet-info" class="mb-2 text-sm text-gray-600 border rounded p-2 bg-gray-50"></div>
+                        <div id="vet-schedule-error" class="mb-4 text-sm text-red-600" style="display:none;"></div>
+
+                        <!-- NEW: Remaining slots display -->
+                        <div class="mb-4 p-3 bg-gray-50 rounded border text-sm">
+                            <strong>Remaining appointment slots for today:</strong>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                                @php $rl = $remainingLimits ?? []; @endphp
+                                <div class="p-2 bg-white rounded border">
+                                    Vaccination: <span id="rem-vaccination">{{ $rl['vaccination'] ?? config('appointment_limits.vaccination') }}</span>
+                                </div>
+                                <div class="p-2 bg-white rounded border">
+                                    Dental: <span id="rem-dental">{{ $rl['dental'] ?? config('appointment_limits.dental') }}</span>
+                                </div>
+                                <div class="p-2 bg-white rounded border">
+                                    Check-up: <span id="rem-checkup">{{ $rl['checkup'] ?? config('appointment_limits.checkup') }}</span>
+                                </div>
+                                <div class="p-2 bg-white rounded border">
+                                    Surgery: <span id="rem-surgery">{{ $rl['surgery'] ?? config('appointment_limits.surgery') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /NEW -->
 
                         <!-- The rest of your form fields in a grid -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -105,7 +127,7 @@
                             <x-secondary-button class="mr-3" onclick="window.history.back()">
                                 {{ __('Cancel') }}
                             </x-secondary-button>
-                            <x-primary-button>
+                            <x-primary-button id="create-appointment-btn">
                                 {{ __('Create Appointment') }}
                             </x-primary-button>
                         </div>
@@ -119,15 +141,160 @@
                         var start = option.getAttribute('data-start-time');
                         var end = option.getAttribute('data-end-time');
                         var status = option.getAttribute('data-status');
+
                         document.getElementById('vet-info').innerHTML =
                             (days ? 'Working Days: ' + days.replace(/,/g, ', ') + '<br>' : '') +
                             (start && end ? 'Hours: ' + start + ' - ' + end + '<br>' : '') +
                             (status ? 'Status: ' + status.charAt(0).toUpperCase() + status.slice(1) : '');
+
+                        validateSchedule(); // run validation when vet changes
                     }
+
+                    function validateSchedule() {
+                        var select = document.getElementById('veterinarian_id');
+                        if (!select) return;
+                        var option = select.options[select.selectedIndex];
+                        if (!option) return;
+
+                        var days = (option.getAttribute('data-working-days') || '').split(',').map(s => s.trim()).filter(Boolean);
+                        var start = option.getAttribute('data-start-time');
+                        var end = option.getAttribute('data-end-time');
+                        var status = option.getAttribute('data-status');
+
+                        var apptInput = document.getElementById('appointment_date');
+                        var submitBtn = document.getElementById('create-appointment-btn');
+                        var errEl = document.getElementById('vet-schedule-error');
+
+                        // default clear
+                        errEl.style.display = 'none';
+                        submitBtn.disabled = false;
+
+                        if (!apptInput || !apptInput.value) return;
+
+                        if (status && status !== 'in') {
+                            errEl.innerText = 'Selected veterinarian is currently unavailable (' + status + ').';
+                            errEl.style.display = 'block';
+                            submitBtn.disabled = true;
+                            return;
+                        }
+
+                        var appt = new Date(apptInput.value);
+                        if (isNaN(appt.getTime())) return;
+
+                        // day name (client timezone); for Manila-centric app this is fine
+                        var weekday = appt.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Manila' });
+
+                        if (days.length > 0 && !days.includes(weekday)) {
+                            errEl.innerText = 'The selected veterinarian does not work on ' + weekday + '.';
+                            errEl.style.display = 'block';
+                            submitBtn.disabled = true;
+                            return;
+                        }
+
+                        if (start && end) {
+                            // get HH:MM in Manila for the selected datetime
+                            var manilaHour = appt.toLocaleTimeString('en-GB', {hour12:false, timeZone:'Asia/Manila'}).slice(0,5); // "HH:MM:SS" -> take HH:MM
+                            var timeStr = manilaHour;
+                            if (timeStr < start || timeStr >= end) {
+                                errEl.innerText = 'Please choose a time between ' + start + ' and ' + end + ' (Asia/Manila).';
+                                errEl.style.display = 'block';
+                                submitBtn.disabled = true;
+                                return;
+                            }
+                        }
+                    }
+
                     // Show info if a vet is pre-selected
                     document.addEventListener('DOMContentLoaded', function() {
                         showVetInfo();
+                        // attach events
+                        document.getElementById('veterinarian_id').addEventListener('change', showVetInfo);
+                        var apptEl = document.getElementById('appointment_date');
+                        if (apptEl) {
+                            apptEl.addEventListener('input', function() {
+                                validateSchedule();
+                                fetchRemainingForDate(apptEl.value);
+                            });
+                        }
+
+                        // initial check for today's remaining (server passed)
+                        // 'remaining' is set below for use in checkTypeAvailability
                     });
+
+                    // AJAX: fetch remaining slots for chosen date/time
+                    async function fetchRemainingForDate(dateValue) {
+                        if (!dateValue) return;
+                        try {
+                            const url = '{{ route('appointments.remaining') }}' + '?date=' + encodeURIComponent(dateValue);
+                            const res = await fetch(url, {
+                                method: 'GET',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            const json = await res.json();
+                            if (res.ok && json.remaining) {
+                                // update UI spans
+                                const r = json.remaining;
+                                if (r.vaccination !== undefined) document.getElementById('rem-vaccination').innerText = r.vaccination;
+                                if (r.dental !== undefined) document.getElementById('rem-dental').innerText = r.dental;
+                                if (r.checkup !== undefined) document.getElementById('rem-checkup').innerText = r.checkup;
+                                if (r.surgery !== undefined) document.getElementById('rem-surgery').innerText = r.surgery;
+
+                                // update local var used by checkTypeAvailability
+                                remaining = r;
+                                // re-run availability check
+                                checkTypeAvailability();
+                            }
+                        } catch (err) {
+                            console.error('Failed to fetch remaining slots', err);
+                        }
+                    }
+
+                    // keep the existing functions showVetInfo and validateSchedule above...
+                    // append small script to prevent selecting type with no remaining slots
+                    (function(){
+                        // initial remaining (server-provided for today)
+                        var remaining = @json($remainingLimits ?? []);
+                        window.remaining = remaining; // expose for debugging if needed
+
+                        function checkTypeAvailability() {
+                            var typeEl = document.getElementById('type');
+                            var createBtn = document.getElementById('create-appointment-btn');
+                            var errEl = document.getElementById('vet-schedule-error');
+                            if (!typeEl || !createBtn) return;
+                            var selectedType = typeEl.value;
+                            errEl.style.display = 'none';
+                            createBtn.disabled = false;
+
+                            if (!selectedType) return;
+
+                            var rem = remaining[selectedType] ?? null;
+                            if (rem === 0) {
+                                errEl.innerText = 'No remaining ' + selectedType + ' slots for the selected day.';
+                                errEl.style.display = 'block';
+                                createBtn.disabled = true;
+                            }
+                        }
+
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var typeEl = document.getElementById('type');
+                            if (typeEl) typeEl.addEventListener('change', checkTypeAvailability);
+
+                            // If user prefilled a date on load, fetch counts for that date
+                            var apptEl = document.getElementById('appointment_date');
+                            if (apptEl && apptEl.value) {
+                                fetchRemainingForDate(apptEl.value);
+                            }
+
+                            checkTypeAvailability();
+                        });
+
+                        // expose for other scripts
+                        window.checkTypeAvailability = checkTypeAvailability;
+                    })();
                     </script>
                 </div>
             </div>

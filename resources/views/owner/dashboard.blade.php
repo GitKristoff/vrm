@@ -9,6 +9,44 @@
         <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-4 sm:p-6 bg-white border-b border-gray-200">
+
+                    {{-- NEW: Remaining slots for today --}}
+                    @php
+                        $limits = config('appointment_limits', []);
+                        $todayManila = \Carbon\Carbon::now('Asia/Manila');
+                        $dayStartUtc = $todayManila->copy()->startOfDay()->setTimezone('UTC');
+                        $dayEndUtc = $todayManila->copy()->endOfDay()->setTimezone('UTC');
+
+                        $remaining = [];
+                        foreach ($limits as $type => $limit) {
+                            $count = \App\Models\Appointment::where('type', $type)
+                                ->where('status', 'Scheduled')
+                                ->whereBetween('appointment_date', [$dayStartUtc, $dayEndUtc])
+                                ->count();
+                            $remaining[$type] = max(0, $limit - $count);
+                        }
+                    @endphp
+
+                    <div class="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 opacity-70">
+                        <div class="p-3 bg-white border rounded text-center">
+                            <div class="text-xs text-gray-500">Vaccination left</div>
+                            <div class="text-lg font-semibold">{{ $remaining['vaccination'] ?? '-' }}</div>
+                        </div>
+                        <div class="p-3 bg-white border rounded text-center">
+                            <div class="text-xs text-gray-500">Dental left</div>
+                            <div class="text-lg font-semibold">{{ $remaining['dental'] ?? '-' }}</div>
+                        </div>
+                        <div class="p-3 bg-white border rounded text-center">
+                            <div class="text-xs text-gray-500">Check-up left</div>
+                            <div class="text-lg font-semibold">{{ $remaining['checkup'] ?? '-' }}</div>
+                        </div>
+                        <div class="p-3 bg-white border rounded text-center">
+                            <div class="text-xs text-gray-500">Surgery left</div>
+                            <div class="text-lg font-semibold">{{ $remaining['surgery'] ?? '-' }}</div>
+                        </div>
+                    </div>
+                    {{-- /NEW --}}
+
                     <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
                         <h3 class="text-base sm:text-lg font-medium">Your Pets</h3>
                         <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">

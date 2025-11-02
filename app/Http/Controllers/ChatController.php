@@ -50,8 +50,10 @@ class ChatController extends Controller
             ->unique()
             ->toArray();
 
+        // Exclude system admin users from selection
         $users = User::where('id', '!=', $userId)
             ->whereNotIn('id', $excludedUserIds)
+            ->where('role', '!=', 'admin')
             ->get();
 
         return view('chat.create', compact('users'));

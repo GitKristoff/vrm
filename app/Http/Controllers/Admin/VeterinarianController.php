@@ -14,7 +14,13 @@ class VeterinarianController extends Controller
 {
     public function index()
     {
-        $veterinarians = Veterinarian::with('user')->paginate(10);
+        // exclude veterinarians whose user has role = system_admin
+        $veterinarians = Veterinarian::with('user')
+            ->whereHas('user', function ($query) {
+                $query->where('role', '!=', 'admin');
+            })
+            ->paginate(10);
+
         return view('admin.veterinarians.index', compact('veterinarians'));
     }
 

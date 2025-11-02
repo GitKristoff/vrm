@@ -84,6 +84,27 @@
                 </div>
             </div>
 
+            <!-- Add remaining slots overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                @php $rl = $remainingLimits ?? []; @endphp
+                <div class="bg-white p-4 rounded-lg border text-center">
+                    <p class="text-sm text-gray-600">Vaccination left</p>
+                    <p class="text-2xl font-semibold">{{ $rl['vaccination'] ?? '-' }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border text-center">
+                    <p class="text-sm text-gray-600">Dental left</p>
+                    <p class="text-2xl font-semibold">{{ $rl['dental'] ?? '-' }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border text-center">
+                    <p class="text-sm text-gray-600">Check-up left</p>
+                    <p class="text-2xl font-semibold">{{ $rl['checkup'] ?? '-' }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border text-center">
+                    <p class="text-sm text-gray-600">Surgery left</p>
+                    <p class="text-2xl font-semibold">{{ $rl['surgery'] ?? '-' }}</p>
+                </div>
+            </div>
+
             <!-- Upcoming Appointments Table -->
             @if(!($isAdmin ?? false))
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">

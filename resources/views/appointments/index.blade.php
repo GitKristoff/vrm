@@ -193,8 +193,136 @@
                     <div class="mt-4">
                         {{ $appointments->links() }}
                     </div>
+
+                    <!-- NEW: AI Chat Section -->
+                    <div id="ai-assistant-card" class="mt-6 bg-white border border-gray-200 rounded-lg p-4">
+                        <h3 class="text-lg font-medium mb-3">AI Assistant</h3>
+
+                        <div id="ai-chat-box" class="flex flex-col gap-3">
+                            <div id="ai-messages" class="h-40 sm:h-56 md:h-64 overflow-auto p-3 border rounded bg-gray-50 text-sm sm:text-base leading-normal">
+                                <!-- messages appended here via JS -->
+                                <div class="text-sm text-gray-500" id="ai-empty">Ask the AI for first aid suggestions before creating an appointment. You can attach an image.</div>
+                            </div>
+
+                            <form id="ai-chat-form" class="flex flex-col sm:flex-row gap-2" enctype="multipart/form-data">
+                                @csrf
+                                <input type="hidden" name="pet_id" id="ai-pet-id" value="{{ $selectedPet ?? '' }}">
+                                <textarea name="message" id="ai-message" rows="2" class="w-full p-2 border rounded text-sm sm:text-base" placeholder="Describe the issue (e.g. my dog has a deep cut)..."></textarea>
+
+                                <div class="flex items-center gap-2">
+                                    <label class="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 border rounded">
+                                        <input id="ai-image" name="image" type="file" accept="image/*" class="hidden">
+                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M16 3v4M8 3v4M3 11h18" />
+                                        </svg>
+                                        <span class="text-xs sm:text-sm text-gray-700">Attach image</span>
+                                    </label>
+
+                                    <button id="ai-send-btn" type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded text-sm sm:text-base disabled:opacity-50">
+                                        Send
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div id="ai-preview" class="mt-2 hidden">
+                                <div class="flex items-center gap-2">
+                                    <img id="ai-preview-img" src="" alt="preview" class="h-20 w-20 object-cover rounded border">
+                                    <button id="ai-remove-img" class="text-sm text-red-600">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loading overlay placed inside card so it covers only the AI widget -->
+                        <div id="ai-loading-overlay" aria-hidden="true">
+                            <div class="text-center">
+                                <div class="ai-spinner" role="status" aria-hidden="true"></div>
+                                <div class="ai-loading-text">Thinking... please wait</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /NEW: AI Chat Section -->
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Responsive CSS fixes for AI chat -->
+    <style>
+        /* Prevent the AI widget from creating horizontal overflow */
+        #ai-assistant-card { overflow-x: hidden; }
+
+        /* Make message content wrap and preserve newlines */
+        #ai-messages,
+        #ai-messages * {
+            box-sizing: border-box;
+            white-space: pre-wrap; /* preserve newlines */
+            word-break: break-word; /* break long words/URLs */
+            overflow-wrap: anywhere;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Bubbles: responsive max width, smaller on mobile */
+        #ai-messages .message-bubble {
+            display: inline-block;
+            max-width: 95%;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        @media (min-width: 640px) {
+            #ai-messages .message-bubble { max-width: 80%; }
+        }
+
+        /* Images inside messages should never enlarge the layout */
+        #ai-messages img {
+            max-width: 100%;
+            height: auto;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Hide any accidental horizontal scrollbars inside the card */
+        #ai-assistant-card,
+        #ai-assistant-card .overflow-auto {
+            -webkit-overflow-scrolling: touch;
+            overflow-x: hidden;
+        }
+
+        /* Prevent the AI widget from creating horizontal overflow */
+        #ai-assistant-card { overflow-x: hidden; position: relative; }
+
+        /* Loading overlay */
+        #ai-loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+        }
+        #ai-loading-overlay.active { display: flex; }
+
+        /* Spinner */
+        .ai-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(0,0,0,0.08);
+            border-top-color: #5b21b6; /* indigo-700 */
+            border-radius: 50%;
+            animation: ai-spin 1s linear infinite;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        @keyframes ai-spin { to { transform: rotate(360deg); } }
+
+        /* Small loading text */
+        .ai-loading-text { margin-top: .5rem; color: #374151; font-size: .875rem; }
+    </style>
+
+    <script>
+        window.AI_CHAT_URL = "{{ route('ai.chat.store') }}";
+    </script>
+
+    <script src="{{ asset('js/ai-chat.js') }}"></script>
+
 </x-app-layout>

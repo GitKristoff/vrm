@@ -74,4 +74,32 @@ class AdminController extends Controller
             ->paginate(10);
         return view('admin.users.index', compact('users'));
     }
+
+    // replaced hard-delete with toggle enable/disable
+    public function toggle(User $user)
+    {
+        try {
+            // Prevent any action on system admin account
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.dashboard')
+                    ->with('error', 'Cannot disable or modify the system admin.');
+            }
+
+            // Prevent disabling current logged-in admin
+            if ($user->id === Auth::id()) {
+                return redirect()->route('admin.dashboard')
+                    ->with('error', 'Cannot disable your own account!');
+            }
+
+            $user->update(['is_active' => ! $user->is_active]);
+
+            $message = $user->is_active ? 'User enabled successfully!' : 'User disabled successfully!';
+
+            return redirect()->route('admin.dashboard')
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Error updating user: ' . $e->getMessage());
+        }
+    }
 }

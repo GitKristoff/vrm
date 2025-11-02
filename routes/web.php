@@ -18,17 +18,21 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-//Dashboard Redirector
+// Dashboard redirector (role -> concrete path)
 Route::get('/dashboard', function () {
-    // You can redirect based on user role here, or show a general dashboard
     $user = Auth::user();
-    if ($user->role === 'admin') {
-        return redirect()->route('admin.dashboard');
-    } elseif ($user->role === 'veterinarian') {
-        return redirect()->route('vet.dashboard');
+    if (! $user) {
+        return redirect()->route('login');
     }
-    return redirect()->route('owner.dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+
+    // Redirect to fixed paths to avoid accidental route/name overrides
+    return match ($user->role) {
+        'admin' => redirect('/admin/dashboard'),
+        'veterinarian' => redirect('/vet/dashboard'),
+        'owner' => redirect('/owner/dashboard'),
+        default => redirect('/'),
+    };
+})->middleware(['auth', 'active', 'verified'])->name('dashboard');
 
 
 // Admin Routes:
@@ -37,7 +41,9 @@ Route::middleware(['auth', 'admin.access', 'verified'])->prefix('admin')->group(
     Route::get('/users', [AdminController::class, 'users'])->name('users.index');
     Route::get('/users/{user}', [AdminController::class, 'show'])
     ->name('admin.users.show');
-    Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('admin.users.destroy');
+    // Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('admin.users.destroy');
+    // replace delete with patch toggle route
+    Route::patch('/users/{user}/toggle', [AdminController::class, 'toggle'])->name('admin.users.toggle');
     Route::get('/users', [AdminController::class, 'users'])->name('admin.users.index');
 
     // Veterinarian Management
@@ -64,7 +70,7 @@ Route::middleware(['auth', 'admin.access', 'verified'])->prefix('admin')->group(
 });
 
 // Owner routes:
-Route::middleware(['auth', 'role:owner', 'verified'])->group(function () {
+Route::middleware(['auth', 'active', 'role:owner', 'verified'])->group(function () {
     // Add this dashboard route
     Route::get('/owner/dashboard', [OwnerController::class, 'dashboard'])->name('owner.dashboard');
 
@@ -81,8 +87,9 @@ Route::middleware(['auth', 'role:owner', 'verified'])->group(function () {
 });
 
 // Veterinarian routes:
-Route::middleware(['auth', 'role:veterinarian,admin', 'verified'])->group(function () {
-    Route::get('/dashboard', [VetController::class, 'dashboard'])->name('vet.dashboard');
+Route::middleware(['auth', 'active', 'role:veterinarian,admin', 'verified'])->group(function () {
+    // Use a distinct path so the main '/dashboard' redirector can route owners/admins correctly
+    Route::get('/vet/dashboard', [VetController::class, 'dashboard'])->name('vet.dashboard');
 
     Route::get('/vet/medical-records', [VetController::class, 'medicalRecords'])
         ->name('vet.medrecords.index');
@@ -101,7 +108,7 @@ Route::middleware(['auth', 'role:veterinarian,admin', 'verified'])->group(functi
 });
 
 // Common routes for all users
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'active', 'verified'])->group(function () {
    // Unified appointment routes
     Route::get('/appointments/calendar', [AppointmentController::class, 'calendar'])
         ->name('appointments.calendar');
@@ -145,7 +152,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 //     ->name('ai.predict');
 
 // Profile routes
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

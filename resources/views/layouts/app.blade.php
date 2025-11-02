@@ -100,5 +100,13 @@
             </main>
         </div>
     </div>
+
+    @if(session('error'))
+        <script>
+            window.addEventListener('DOMContentLoaded', function () {
+                alert(@json(session('error')));
+            });
+        </script>
+    @endif
 </body>
 </html>

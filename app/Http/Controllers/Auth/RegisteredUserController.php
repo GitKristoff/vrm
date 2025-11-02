@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\Log;
 
 class RegisteredUserController extends Controller
 {
@@ -64,7 +65,15 @@ class RegisteredUserController extends Controller
             'country' => $request->country,
         ]);
 
-        event(new Registered($user));
+        // Fire Registered event (email may be sent). Wrap to catch mail transport failures.
+        try {
+            event(new Registered($user));
+        } catch (\Throwable $e) {
+            // Log and redirect to login with friendly offline message instead of stack trace
+            Log::error('Mail transport error during registration', ['message' => $e->getMessage()]);
+            return redirect()->route('login')->with('error', 'Email service is currently unavailable; you can log in and continue.')->setStatusCode(503);
+        }
+
         Auth::login($user);
 
         return redirect()->route('login'); // Redirect to login page

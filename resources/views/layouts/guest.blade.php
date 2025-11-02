@@ -28,5 +28,19 @@
                 {{ $slot }}
             </div>
         </div>
+
+    @if(session('error'))
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            window.addEventListener('DOMContentLoaded', function () {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: @json(session('error')),
+                    confirmButtonText: 'OK'
+                });
+            });
+        </script>
+    @endif
     </body>
 </html>

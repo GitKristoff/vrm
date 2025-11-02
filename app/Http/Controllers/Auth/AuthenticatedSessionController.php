@@ -30,6 +30,18 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
+        // Immediately revoke access for disabled accounts
+        if (! $user->is_active) {
+            // Logout and invalidate session
+            \Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            // Redirect back to login with a clear message (used for popup)
+            return redirect()->route('login')
+                ->with('error', 'Your account has been disabled. Please contact the system administrator to re-enable it.');
+        }
+
         // Redirect based on role
         if ($user->role === 'admin') {
             return redirect()->intended(route('admin.dashboard'));
